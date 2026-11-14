@@ -1,0 +1,195 @@
+name: Build Flutter desktop
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flutter-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-latest
+            target: linux
+          - name: windows
+            os: windows-latest
+            target: windows
+          - name: macos
+            os: macos-latest
+            target: macos
+
+    env:
+      API_URL: ${{ vars.API_URL || 'http://localhost:1337' }}
+      COVERS_PROXY_URL: ${{ vars.COVERS_PROXY_URL || 'https://images.example.com' }}
+      UPDATE_FEED_URL: https://github.com/${{ github.repository }}/releases/latest/download/appcast.xml
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.9
+          cache: true
+
+      - name: Resolve app version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(python3 - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path('pubspec.yaml').read_text()
+          match = re.search(r'^version:\s*([^\s]+)', text, re.M)
+          if not match:
+              raise SystemExit('Could not find version in pubspec.yaml')
+          print(match.group(1).strip())
+          PY
+          )
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install Linux dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
+            libstdc++-12-dev libmpv-dev libkeybinder-3.0-dev
+
+      - name: Fetch packages
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build ${{ matrix.target }}
+        shell: bash
+        run: |
+          flutter build ${{ matrix.target }} --release \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=COVERS_PROXY_URL="$COVERS_PROXY_URL" \
+            --dart-define=UPDATE_FEED_URL="$UPDATE_FEED_URL"
+
+      - name: Generate Windows installer
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            throw "ISCC.exe not found at $iscc"
+          }
+          & $iscc windows\installer\waveify.iss
+          Copy-Item "build\windows\installer\Waveify-Setup.exe" "build\Waveify-${{ steps.version.outputs.version }}-windows.exe"
+
+      - name: Package macOS app
+        if: matrix.target == 'macos'
+        shell: bash
+        run: |
+          APP_PATH="build/macos/Build/Products/Release/Waveify.app"
+          ZIP_PATH="build/Waveify-${{ steps.version.outputs.version }}-macos.zip"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "Missing macOS app bundle: $APP_PATH" >&2
+            exit 1
+          fi
+          ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
+
+      - name: Upload desktop build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Waveify-${{ matrix.target }}
+          path: |
+            build/Waveify-${{ steps.version.outputs.version }}-${{ matrix.target }}.*
+            build/**/*.zip
+            build/**/*.exe
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish update feed and release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Resolve app version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(python3 - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path('pubspec.yaml').read_text()
+          match = re.search(r'^version:\s*([^\s]+)', text, re.M)
+          if not match:
+              raise SystemExit('Could not find version in pubspec.yaml')
+          print(match.group(1).strip())
+          PY
+          )
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare release metadata
+        shell: bash
+        run: |
+          mkdir -p dist
+          python3 - <<'PY'
+          import glob
+          import os
+          from pathlib import Path
+          root = Path('release-assets')
+          windows = sorted(root.glob('**/Waveify-*-windows*'))
+          macos = sorted(root.glob('**/Waveify-*-macos*'))
+          if not windows and not macos:
+              raise SystemExit('No packaged desktop artifacts were found.')
+          for path in windows + macos:
+              print(path)
+          PY
+
+      - name: Generate appcast.xml
+        env:
+          APP_NAME: Waveify
+          APP_VERSION: ${{ steps.version.outputs.version }}
+          APPCAST_URL: https://github.com/${{ github.repository }}/releases/latest/download/appcast.xml
+          WINDOWS_URL: https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/Waveify-${{ steps.version.outputs.version }}-windows.exe
+          MACOS_URL: https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/Waveify-${{ steps.version.outputs.version }}-macos.zip
+          WINDOWS_SIGNATURE: ${{ secrets.WINDOWS_DSA_SIGNATURE }}
+          MACOS_SIGNATURE: ${{ secrets.MACOS_ED_SIGNATURE }}
+        run: |
+          python3 tool/generate_appcast.py > appcast.xml
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Waveify ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            release-assets/**/Waveify-*.exe
+            release-assets/**/Waveify-*.zip
+            appcast.xml

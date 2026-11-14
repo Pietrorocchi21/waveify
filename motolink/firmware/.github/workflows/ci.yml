@@ -1,0 +1,68 @@
+name: MotoLink Firmware CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "firmware/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "firmware/**"
+
+jobs:
+  native-tests:
+    name: Native Unit Tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ make
+      - name: Configure CMake
+        run: cmake -S firmware -B firmware/build -DBUILD_TESTING=ON
+      - name: Build
+        run: cmake --build firmware/build --config Debug
+      - name: Run tests
+        run: ctest --test-dir firmware/build -C Debug --output-on-failure
+
+  espidf-build:
+    name: ESP-IDF Build (ESP32-S3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: "5.4.1"
+          install_tools: true
+      - name: Configure
+        run: |
+          cd firmware/espidf
+          idf.py set-target esp32s3
+      - name: Build
+        run: |
+          cd firmware/espidf
+          idf.py build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: motolink-firmware
+          path: |
+            firmware/espidf/build/*.bin
+            firmware/espidf/build/bootloader/*.bin
+            firmware/espidf/build/partition_table/*.bin
+          retention-days: 7
+
+  clang-format:
+    name: Code Style Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check formatting
+        run: |
+          cd firmware
+          find . -name "*.cpp" -o -name "*.hpp" | xargs clang-format --dry-run --Werror || true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true

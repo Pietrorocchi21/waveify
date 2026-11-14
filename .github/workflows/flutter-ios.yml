@@ -1,0 +1,67 @@
+name: Build Flutter iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    env:
+      API_URL: ${{ vars.API_URL || 'http://localhost:1337' }}
+      COVERS_PROXY_URL: ${{ vars.COVERS_PROXY_URL || 'https://images.example.com' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.9
+          cache: true
+
+      - name: Fetch packages
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build unsigned IPA
+        run: |
+          flutter build ipa --release --no-codesign \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=COVERS_PROXY_URL="$COVERS_PROXY_URL"
+
+      - name: Package installer payload
+        run: |
+          mkdir -p artifacts
+          if [ -d "build/ios/ipa" ]; then
+            cp -R build/ios/ipa artifacts/ios-ipa
+          fi
+          if [ -d "build/ios/archive/Runner.xcarchive" ]; then
+            cp -R build/ios/archive artifacts/ios-archive
+          fi
+
+      - name: Upload private artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Waveify-ios-private
+          path: |
+            build/
+            artifacts/
+          if-no-files-found: error
+          retention-days: 14

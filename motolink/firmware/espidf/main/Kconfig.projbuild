@@ -1,0 +1,107 @@
+menu "MotoLink"
+
+config MOTOLINK_GNSS_ENABLED
+    bool "Enable external GNSS receiver"
+    default n
+    help
+        Enable only after wiring a 3.3V UART GNSS receiver.
+
+config MOTOLINK_GNSS_RX
+    int "ESP RX pin connected to GNSS TX"
+    range 0 47
+    default 4
+
+config MOTOLINK_GNSS_BAUD
+    int "GNSS UART baud rate"
+    range 9600 115200
+    default 9600
+
+config MOTOLINK_IMU_ENABLED
+    bool "Enable BMI270 IMU (SPI)"
+    default n
+    help
+        Enable only after wiring a 3.3V SPI BMI270 breakout.
+
+config MOTOLINK_IMU_SPI_HOST
+    int "SPI host for IMU"
+    range 0 2
+    default 2
+    help
+        VSPI = 2, HSPI = 1 (SPI3 on S3)
+
+config MOTOLINK_IMU_CS
+    int "IMU chip select GPIO"
+    range 0 47
+    default 5
+
+config MOTOLINK_IMU_INT
+    int "IMU interrupt GPIO (data ready)"
+    range 0 47
+    default 6
+
+config MOTOLINK_BLE_ENABLED
+    bool "Enable Bluetooth LE"
+    default y
+    help
+        BLE peripheral for app communication.
+
+config MOTOLINK_BLE_DEVICE_NAME
+    string "BLE device name"
+    default "MotoLink"
+    depends on MOTOLINK_BLE_ENABLED
+
+config MOTOLINK_BLE_CLIENT_ENABLED
+    bool "Enable BLE client for MotoCAN Adapter"
+    default y
+    help
+        Connect to MotoCAN Adapter brand-specific module.
+
+config MOTOLINK_BLE_CLIENT_NAME
+    string "MotoCAN Adapter device name prefix"
+    default "MotoCAN"
+    depends on MOTOLINK_BLE_CLIENT_ENABLED
+
+config MOTOLINK_STORAGE_ENABLED
+    bool "Enable microSD card storage"
+    default n
+    help
+        Enable only after wiring a 3.3V SD card (SDMMC 1-bit or 4-bit).
+
+config MOTOLINK_STORAGE_SLOT
+    int "SDMMC slot"
+    range 0 1
+    default 0
+    help
+        Slot 0 = SDMMC_HOST_SLOT_0 (GPIO 40-45 on S3), Slot 1 = SDMMC_HOST_SLOT_1
+
+config MOTOLINK_LED_GPIO
+    int "Status LED GPIO"
+    range 0 47
+    default 2
+
+config MOTOLINK_LED_ACTIVE_HIGH
+    bool "LED active high"
+    default n
+
+config MOTOLINK_BTN_GPIO
+    int "Service button GPIO"
+    range 0 47
+    default 0
+
+config MOTOLINK_BTN_ACTIVE_LOW
+    bool "Button active low"
+    default y
+
+config MOTOLINK_POWER_MONITOR
+    bool "Enable 12V power monitoring via ADC"
+    default n
+    help
+        Monitor motorcycle battery voltage.
+
+config MOTOLINK_POWER_ADC_CHANNEL
+    int "ADC channel for 12V monitoring"
+    range 0 7
+    default 0
+    depends on MOTOLINK_POWER_MONITOR
+
+endmenu

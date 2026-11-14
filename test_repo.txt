@@ -1,0 +1,16 @@
+00:00 +0: loading C:/Users/samue/Documents/ChatGPT/Spotify/test/core/music/aggregated_music_repository_test.dart
+00:00 +0: AggregatedMusicRepository deduplicates same track across providers and prefers the stronger result
+00:00 +1: AggregatedMusicRepository falls back to the next source when the first one cannot resolve the stream
+00:00 +1 -1: AggregatedMusicRepository falls back to the next source when the first one cannot resolve the stream [E]
+  Expected: 'https://example.com/stream.mp3'
+    Actual: <null>
+     Which: not an <Instance of 'String'>
+  
+  package:matcher                                              expect
+  package:flutter_test/src/widget_tester.dart 473:18           expect
+  test\core\music\aggregated_music_repository_test.dart 133:7  main.<fn>.<fn>
+  
+00:00 +1 -1: Some tests failed.
+
+Failing tests:
+  C:/Users/samue/Documents/ChatGPT/Spotify/test/core/music/aggregated_music_repository_test.dart: AggregatedMusicRepository falls back to the next source when the first one cannot resolve the stream

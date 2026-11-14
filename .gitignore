@@ -1,0 +1,95 @@
+# Waveify - .gitignore (Flutter/Dart + Supabase + Python tools)
+
+# Flutter/Dart/Pub
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.gr.dart
+*.config.dart
+*.mocks.dart
+
+# Symbolication / Obfuscation
+app.*.symbols
+app.*.map.json
+
+# Android
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+/android/local.properties
+*.jks
+*.keystore
+
+# iOS/macOS
+/ios/.symlinks/
+/ios/Runner.xcworkspace/
+/ios/Runner.xcuserdata/
+/macos/Runner.xcworkspace/
+/macos/Runner.xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.app.dSYM/
+
+# Linux/Windows
+/linux/flutter/ephemeral/
+/windows/flutter/ephemeral/
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.p12
+*.key
+*.crt
+*.jks
+*.keystore
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+*.pyc
+
+# Python tools
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.tox/
+.venv/
+venv/
+env/
+
+# Supabase
+.supabase/
+supabase/.temp/
+
+# Turbo / Build cache
+.turbo/
+.vercel/
+
+# Misc
+*.class
+.history
+.swiftpm/
+.migrate_working_dir/

@@ -1,0 +1,34 @@
+# Waveify - Config Codex Cloud
+# Committa questo file nel repo. NON mettere segreti qui.
+
+model = "auto"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[plugins]
+# Plugin essenziali per sviluppo Flutter + Supabase
+"browser@openai-bundled" = { enabled = true }
+"github@openai-curated-remote" = { enabled = true }
+"supabase@openai-curated-remote" = { enabled = true }
+"codex-app-tools@openai-bundled" = { enabled = true }
+"visualize@openai-bundled" = { enabled = true }
+
+# MCP Servers remoti (configura token in Cloud Settings -> Secrets)
+[mcp_servers.github]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-github@latest"]
+env = { GITHUB_PERSONAL_ACCESS_TOKEN = "{{GITHUB_TOKEN}}" }
+
+[mcp_servers.supabase]
+command = "npx"
+args = ["-y", "@supabase/mcp-server-supabase@latest"]
+env = { 
+  SUPABASE_ACCESS_TOKEN = "{{SUPABASE_ACCESS_TOKEN}}",
+  SUPABASE_PROJECT_REF = "{{SUPABASE_PROJECT_REF}}"
+ }
+
+# Variabili d'ambiente progetto (valori non sensibili)
+[env]
+FLUTTER_VERSION = "3.24.0"
+DART_VERSION = "3.5.0"
+# API_URL, SUPABASE_URL, secrets vanno in Secret Manager Cloud

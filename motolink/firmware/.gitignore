@@ -1,0 +1,16 @@
+build/
+espidf/build/
+espidf/sdkconfig
+espidf/sdkconfig.old
+espidf/managed_components/
+espidf/partition_table/
+espidf/bootloader/
+*.bin
+*.elf
+*.map
+*.log
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store

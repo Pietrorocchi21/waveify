@@ -1,0 +1,149 @@
+00:00 +0: loading C:/Users/samue/Documents/ChatGPT/Spotify/test/app/app_smoke_test.dart
+00:00 +0: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +2: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +3: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +4: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +5: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +6: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +7: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +8: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +9: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +10: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +11: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +12: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +13: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +14: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +15: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +16: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +16 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:00 +16 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/music/aggregated_music_repository_test.dart: AggregatedMusicRepository falls back to the next source when the first one cannot resolve the stream [E]
+  Expected: 'https://example.com/stream.mp3'
+    Actual: <null>
+     Which: not an <Instance of 'String'>
+  
+  package:matcher                                              expect
+  package:flutter_test/src/widget_tester.dart 473:18           expect
+  test\core\music\aggregated_music_repository_test.dart 133:7  main.<fn>.<fn>
+  
+00:01 +17 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +18 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +19 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +20 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +21 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +22 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +23 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +24 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +25 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +26 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +27 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +28 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +29 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +30 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +31 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:01 +32 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +33 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +34 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +35 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +36 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +37 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +38 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +39 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +40 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +41 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +42 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +43 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +44 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +45 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +46 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +47 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:02 +48 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +49 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +50 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +51 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +52 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +53 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +54 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +55 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +56 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +57 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +58 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +59 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +60 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +61 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +62 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:03 +63 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +64 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +65 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +66 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +67 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +68 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +69 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +70 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +71 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +72 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +73 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +74 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +75 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +76 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +77 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +78 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:04 +79 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:05 +80 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:05 +81 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:05 +82 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:05 +83 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:05 +84 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+00:05 +85 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+[session] keyring non scrivibile, uso il riservo: TimeoutException after 0:00:05.000000: Future not completed
+[session] sessione non salvata: Binding has not yet been initialized.
+00:05 +86 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore saves the session even when the keyring does not answer
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+00:05 +87 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/features/shortcuts/global_shortcut_settings_test.dart: parseGlobalHotKey rejects an empty or an unknown binding
+00:05 +88 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +89 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +90 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +91 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +92 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +93 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +94 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +95 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +96 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +97 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +98 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +99 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +100 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +101 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +102 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +103 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +104 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +105 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+00:05 +106 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore loads the session even when the keyring does not answer
+[session] keyring non utilizzabile: TimeoutException after 0:00:05.000000: Future not completed
+[session] storage di riserva non leggibile: Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+00:10 +107 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore clears the session even when the keyring does not answer
+[session] keyring non scrivibile, uso il riservo: TimeoutException after 0:00:05.000000: Future not completed
+[session] sessione non salvata: Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+00:15 +108 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore emits the session changes
+[session] keyring non scrivibile, uso il riservo: TimeoutException after 0:00:05.000000: Future not completed
+[session] sessione non salvata: Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+00:20 +109 -1: C:/Users/samue/Documents/ChatGPT/Spotify/test/core/auth/auth_session_store_test.dart: AuthSessionStore reports the expiry of the access token
+00:20 +110 -1: Some tests failed.
+
+Failing tests:
+  C:/Users/samue/Documents/ChatGPT/Spotify/test/core/music/aggregated_music_repository_test.dart: AggregatedMusicRepository falls back to the next source when the first one cannot resolve the stream

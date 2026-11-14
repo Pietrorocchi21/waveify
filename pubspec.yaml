@@ -1,0 +1,113 @@
+name: waveify
+description: "Waveify — music player multipiattaforma con account sincronizzato."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.7
+  flutter: '>=3.47.9 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # --- State management (sostituisce zustand) ---
+  flutter_riverpod: ^2.6.1
+
+  # --- Routing (sostituisce react-router) ---
+  go_router: ^14.6.2
+
+  # --- Networking ---
+  dio: ^5.7.0
+
+  # --- Audio ---
+  just_audio: ^0.9.46
+  # Desktop (Windows/Linux) implementation of the just_audio API, backed by
+  # libmpv. It also unlocks Opus/WebM on Windows, which the native
+  # Windows Media Foundation backend cannot decode.
+  just_audio_media_kit: ^2.1.0
+  media_kit: ^1.2.0
+  media_kit_libs_linux: any
+  media_kit_libs_windows_audio: any
+  audio_service: ^0.18.15
+  audio_session: ^0.1.21
+
+  # --- Storage ---
+  shared_preferences: ^2.3.3
+  flutter_secure_storage: ^9.2.2
+  path_provider: ^2.1.5
+
+  # --- UI ---
+  cached_network_image: ^3.4.1
+  flutter_svg: ^2.0.10
+  palette_generator: ^0.3.3+7
+  shimmer: ^3.0.0
+  intl: any
+
+  # --- Platform desktop ---
+  window_manager: ^0.4.2
+  screen_retriever: ^0.2.0
+
+  # --- Deep link support ---
+  app_links: ^6.4.1
+
+  # --- Piattaforma ---
+  connectivity_plus: ^7.3.1
+  wakelock_plus: ^1.2.8
+  bitsdojo_window: ^0.1.6
+  auto_updater: ^1.0.0
+  in_app_update: ^4.2.5
+
+  # --- Controllo multi-dispositivo (funzione "Remote") ---
+  supabase_flutter: ^2.18.3
+
+  # --- Personalizzazione (sfondo) ---
+  file_picker: ^11.0.3
+
+  # --- Scorciatoie di sistema (desktop) ---
+  hotkey_manager: ^0.2.3
+
+
+  # --- Visualizzatore (shader) ---
+  flutter_shaders: ^0.1.3
+
+  # --- Utils ---
+  crypto: ^3.0.6
+  uuid: ^4.5.1
+  collection: ^1.19.0
+  logger: ^2.5.0
+  url_launcher: ^6.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.13
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/icon.png"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/images/icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  windows:
+    generate: true
+    image_path: "assets/images/icon.png"
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: "assets/images/icon.png"
+
+flutter:
+  uses-material-design: true
+  shaders:
+    - shaders/cover_ambient.frag
+  assets:
+    - assets/locales/
+    - assets/images/

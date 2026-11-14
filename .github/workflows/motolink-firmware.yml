@@ -1,0 +1,37 @@
+name: MotoLink firmware
+on:
+  workflow_dispatch:
+  push:
+    paths: ['motolink/firmware/**', '.github/workflows/motolink-firmware.yml']
+  pull_request:
+    paths: ['motolink/firmware/**', '.github/workflows/motolink-firmware.yml']
+permissions:
+  contents: read
+jobs:
+  native-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S motolink/firmware -B /tmp/motolink-tests -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-Wall -Wextra -Werror -fsanitize=address,undefined"
+      - run: cmake --build /tmp/motolink-tests
+      - run: ctest --test-dir /tmp/motolink-tests --output-on-failure
+  esp32s3-build:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.4.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ESP32-S3
+        shell: bash
+        working-directory: motolink/firmware/espidf
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: motolink-esp32s3
+          path: |
+            motolink/firmware/espidf/build/motolink.bin
+            motolink/firmware/espidf/build/bootloader/bootloader.bin
+            motolink/firmware/espidf/build/partition_table/partition-table.bin
+            motolink/firmware/espidf/build/flasher_args.json
+          if-no-files-found: error

@@ -1,0 +1,68 @@
+name: Build Flutter Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      API_URL: ${{ vars.API_URL || 'http://localhost:1337' }}
+      COVERS_PROXY_URL: ${{ vars.COVERS_PROXY_URL || 'https://images.example.com' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.9
+          cache: true
+
+      - name: Fetch packages
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build debug APK
+        run: |
+          flutter build apk --debug \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=COVERS_PROXY_URL="$COVERS_PROXY_URL"
+
+      - name: Build release APK
+        run: |
+          flutter build apk --release \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=COVERS_PROXY_URL="$COVERS_PROXY_URL"
+
+      - name: Upload private artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Waveify-android-private
+          path: build/app/outputs/
+          if-no-files-found: error
+          retention-days: 14

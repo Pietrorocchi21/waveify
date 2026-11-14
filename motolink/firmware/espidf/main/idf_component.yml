@@ -1,0 +1,13 @@
+dependencies:
+  driver: ">=5.4.0"
+  esp_timer: ">=5.4.0"
+  esp_system: ">=5.4.0"
+  esp_wifi: ">=5.4.0"
+  bt_controller: ">=5.4.0"
+  esp_bt: ">=5.4.0"
+  nvs_flash: ">=5.4.0"
+  sdmmc: ">=5.4.0"
+  fatfs: ">=5.4.0"
+  twai: ">=5.4.0"
+  freertos: ">=5.4.0"
+  log: ">=5.4.0"

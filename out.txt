@@ -1,0 +1,13 @@
+Analyzing Spotify...                                            
+
+   info - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?' - lib\core\media\innertube\innertube_client.dart:18:7 - use_null_aware_elements
+   info - Unnecessary braces in a string interpolation. Try removing the braces - lib\core\music\music_source.dart:50:13 - unnecessary_brace_in_string_interps
+   info - Unnecessary braces in a string interpolation. Try removing the braces - lib\core\music\music_source.dart:50:32 - unnecessary_brace_in_string_interps
+   info - Use an initializing formal to assign a parameter to a field. Try using an initialing formal ('this._api') to initialize the field - lib\core\music\music_source.dart:115:52 - prefer_initializing_formals
+   info - Use an initializing formal to assign a parameter to a field. Try using an initialing formal ('this._tokenProvider') to initialize the field - lib\core\network\api_client.dart:20:9 - prefer_initializing_formals
+   info - Use an initializing formal to assign a parameter to a field. Try using an initialing formal ('this._onRefreshSession') to initialize the field - lib\core\network\api_client.dart:21:9 - prefer_initializing_formals
+   info - Use an initializing formal to assign a parameter to a field. Try using an initialing formal ('this._catalog') to initialize the field - lib\core\network\catalog_service.dart:16:9 - prefer_initializing_formals
+   info - Use an initializing formal to assign a parameter to a field. Try using an initialing formal ('this._api') to initialize the field - lib\core\network\catalog_service.dart:17:9 - prefer_initializing_formals
+   info - 'onReorder' is deprecated and shouldn't be used. Use the onReorderItem callback instead. The onReorderItem callback adjusts the newIndex parameter for a removed item at the oldIndex. This feature was deprecated after v3.41.0-0.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\library\ui\playlist_detail_page.dart:163:13 - deprecated_member_use
+   info - 'onReorder' is deprecated and shouldn't be used. Use the onReorderItem callback instead. The onReorderItem callback adjusts the newIndex parameter for a removed item at the oldIndex. This feature was deprecated after v3.41.0-0.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\player\ui\mini_player.dart:203:21 - deprecated_member_use
+
