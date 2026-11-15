@@ -44,7 +44,7 @@ class AppRoutes {
 /// The authenticated pages live inside a shell (navigation + mini player);
 /// the detail pages are pushed on top of it.
 final routerProvider = Provider<GoRouter>((ref) {
-  final notifier = ValueNotifier<AuthState>(const AuthState());
+  final notifier = ValueNotifier<AuthState>(ref.read(authControllerProvider));
   ref.onDispose(notifier.dispose);
 
   ref.listen<AuthState>(authControllerProvider, (_, next) {
@@ -101,21 +101,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.playlist,
-        builder: (context, state) => _PlaylistRoute(
-          id: state.uri.queryParameters['id'] ?? '',
-        ),
+        builder: (context, state) =>
+            _PlaylistRoute(id: state.uri.queryParameters['id'] ?? ''),
       ),
       GoRoute(
         path: AppRoutes.artist,
-        builder: (context, state) => _ArtistRoute(
-          id: state.uri.queryParameters['id'] ?? '',
-        ),
+        builder: (context, state) =>
+            _ArtistRoute(id: state.uri.queryParameters['id'] ?? ''),
       ),
       GoRoute(
         path: AppRoutes.collection,
-        builder: (context, state) => _CollectionRoute(
-          id: state.uri.queryParameters['id'] ?? '',
-        ),
+        builder: (context, state) =>
+            _CollectionRoute(id: state.uri.queryParameters['id'] ?? ''),
       ),
       GoRoute(
         path: AppRoutes.player,
@@ -123,9 +120,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.profile,
-        builder: (context, state) => _ProfileRoute(
-          userId: state.uri.queryParameters['id'] ?? '',
-        ),
+        builder: (context, state) =>
+            _ProfileRoute(userId: state.uri.queryParameters['id'] ?? ''),
       ),
       GoRoute(
         path: AppRoutes.leaderboard,
@@ -230,10 +226,8 @@ class _LeaderboardRoute extends StatelessWidget {
   final String? artistName;
 
   @override
-  Widget build(BuildContext context) => LeaderboardPage(
-        artistId: artistId,
-        artistName: artistName,
-      );
+  Widget build(BuildContext context) =>
+      LeaderboardPage(artistId: artistId, artistName: artistName);
 }
 
 class _PlayerRoute extends StatelessWidget {

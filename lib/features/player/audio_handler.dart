@@ -13,7 +13,8 @@ class WaveifyAudioHandler extends BaseAudioHandler {
   /// The seek step used by the fast-forward / rewind actions.
   static const Duration seekStep = Duration(seconds: 10);
 
-  WaveifyAudioHandler({AudioPlayer? player}) : _player = player ?? AudioPlayer() {
+  WaveifyAudioHandler({AudioPlayer? player})
+    : _player = player ?? AudioPlayer() {
     _player.playbackEventStream.listen(
       _broadcastState,
       onError: (Object error, StackTrace stackTrace) {
@@ -80,11 +81,7 @@ class WaveifyAudioHandler extends BaseAudioHandler {
 
     try {
       await _player.setAudioSource(
-        AudioSource.uri(
-          Uri.parse(url),
-          headers: headers,
-          tag: mediaItem,
-        ),
+        AudioSource.uri(Uri.parse(url), headers: headers, tag: mediaItem),
       );
     } catch (err) {
       playbackState.add(
@@ -116,7 +113,16 @@ class WaveifyAudioHandler extends BaseAudioHandler {
         processingState: AudioProcessingState.ready,
       ),
     );
-    await _player.play();
+    unawaited(
+      _player.play().catchError((Object error, StackTrace stack) {
+        playbackState.add(
+          playbackState.value.copyWith(
+            processingState: AudioProcessingState.error,
+            errorMessage: '$error',
+          ),
+        );
+      }),
+    );
   }
 
   @override

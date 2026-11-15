@@ -1,4 +1,6 @@
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, exit;
+
+import 'core/diagnostics/native_self_test.dart';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +31,17 @@ Future<void> main(List<String> args) async {
   // Desktop audio backend: libmpv through media_kit. It backs the same
   // `just_audio` API used on mobile and adds Opus/WebM support on Windows.
   JustAudioMediaKit.ensureInitialized();
+  if (args.contains('--self-test')) {
+    final output = args
+        .where((arg) => arg.startsWith('--self-test-output='))
+        .firstOrNull;
+    final ok = await runNativeSelfTest(
+      output == null
+          ? 'waveify-self-test.json'
+          : output.substring('--self-test-output='.length),
+    );
+    exit(ok ? 0 : 1);
+  }
 
   // The updater is prepared before the first frame.
   UpdaterService.instance.initialize();
@@ -57,9 +70,7 @@ Future<void> main(List<String> args) async {
   }
 
   final container = ProviderContainer(
-    overrides: [
-      audioHandlerProvider.overrideWithValue(handler),
-    ],
+    overrides: [audioHandlerProvider.overrideWithValue(handler)],
   );
 
   // Restore the persisted settings and session before the first frame.
@@ -72,9 +83,6 @@ Future<void> main(List<String> args) async {
   await container.read(deepLinkServiceProvider).start();
 
   runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: const WaveifyApp(),
-    ),
+    UncontrolledProviderScope(container: container, child: const WaveifyApp()),
   );
 }

@@ -218,6 +218,16 @@
     "dailyMixesSubtitle": "Playlists novas e atualizadas em torno dos seus artistas e gêneros favoritos"
   },
   "library": {
+    "import_audio": "Importar áudio",
+    "files_imported": "{count} arquivos importados",
+    "on_device": "Neste dispositivo",
+    "local_empty": "Nenhum áudio neste dispositivo",
+    "local_hint": "Importe arquivos de áudio para começar a ouvir.",
+    "cloud": "Nuvem",
+    "cloud_empty": "Nenhum áudio na sua biblioteca na nuvem",
+    "upload_cloud": "Enviar para a nuvem",
+    "uploaded_cloud": "Enviado para a nuvem",
+    "your_music": "Sua música",
     "title": "Biblioteca",
     "liked_songs": "Músicas curtidas",
     "song": "música",
@@ -249,6 +259,7 @@
     "remove_from_liked": "Remover dos favoritos"
   },
   "login": {
+    "continue_local": "Continuar sem uma conta",
     "welcome_back": "Bem-vindo de volta",
     "sign_in_to_account": "Entre na sua conta",
     "auth_title_login": "Sua música, do seu jeito",
@@ -360,6 +371,7 @@
     "repeat_off": "Repetir: desativado",
     "repeat_all": "Repetir: tudo",
     "repeat_one": "Repetir: faixa",
+    "open_player": "Abrir player",
     "nothing_playing": "Não há nada tocando",
     "choose_track": "Escolha uma faixa na pesquisa",
     "queue": "Fila",
@@ -448,6 +460,9 @@
     "type_to_search": "Digite para pesquisar"
   },
   "settings": {
+    "updater": {
+      "unsupported": "As atualizações automáticas não são compatíveis com esta plataforma."
+    },
     "title": "Configurações",
     "search_placeholder": "Pesquisar configurações...",
     "subtitle": "Gerencie suas preferências",

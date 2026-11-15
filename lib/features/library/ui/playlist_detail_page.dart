@@ -19,8 +19,10 @@ class PlaylistDetail {
 }
 
 /// Loads one of the user's playlists.
-final playlistDetailProvider =
-    FutureProvider.family<PlaylistDetail, String>((ref, id) async {
+final playlistDetailProvider = FutureProvider.family<PlaylistDetail, String>((
+  ref,
+  id,
+) async {
   final (playlist, items) = await ref.read(apiProvider).getUserPlaylist(id);
   return PlaylistDetail(playlist, items);
 });
@@ -72,11 +74,13 @@ class _PlaylistHeader extends ConsumerWidget {
               FilledButton.icon(
                 onPressed: tracks.isEmpty
                     ? null
-                    : () => ref.read(playerControllerProvider.notifier).playTrack(
-                          tracks.first,
-                          queue: tracks,
-                          context: 'playlist:${data.playlist.id}',
-                        ),
+                    : () => ref
+                          .read(playerControllerProvider.notifier)
+                          .playTrack(
+                            tracks.first,
+                            queue: tracks,
+                            context: 'playlist:${data.playlist.id}',
+                          ),
                 icon: const Icon(Icons.play_arrow_rounded, size: 18),
                 label: Text(t('playlist.play_all')),
               ),
@@ -84,11 +88,11 @@ class _PlaylistHeader extends ConsumerWidget {
                 onPressed: tracks.isEmpty
                     ? null
                     : () => ref
-                        .read(playerControllerProvider.notifier)
-                        .playShuffled(
-                          tracks,
-                          context: 'playlist:${data.playlist.id}',
-                        ),
+                          .read(playerControllerProvider.notifier)
+                          .playShuffled(
+                            tracks,
+                            context: 'playlist:${data.playlist.id}',
+                          ),
                 icon: const Icon(Icons.shuffle_rounded, size: 18),
                 label: Text(t('common.shuffle')),
               ),
@@ -125,7 +129,9 @@ class PlaylistDetailPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(detail.valueOrNull?.playlist.title ?? t('playlist.playlist')),
+        title: Text(
+          detail.valueOrNull?.playlist.title ?? t('playlist.playlist'),
+        ),
         actions: [
           if (detail.valueOrNull != null)
             PopupMenuButton<String>(
@@ -138,14 +144,8 @@ class PlaylistDetailPage extends ConsumerWidget {
                 }
               },
               itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'rename',
-                  child: Text(t('common.rename')),
-                ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Text(t('common.delete')),
-                ),
+                PopupMenuItem(value: 'rename', child: Text(t('common.rename'))),
+                PopupMenuItem(value: 'delete', child: Text(t('common.delete'))),
               ],
             ),
         ],
@@ -160,13 +160,10 @@ class PlaylistDetailPage extends ConsumerWidget {
           final tracks = data.items.map((e) => e.track).toList(growable: false);
           return ReorderableListView.builder(
             padding: const EdgeInsets.only(bottom: 32),
-            onReorder: (oldIndex, newIndex) => _reorder(
-              context,
-              ref,
-              data,
-              oldIndex,
-              newIndex,
-            ),
+            // This handler adjusts the insertion index for the removed row.
+            // ignore: deprecated_member_use
+            onReorder: (oldIndex, newIndex) =>
+                _reorder(context, ref, data, oldIndex, newIndex),
             itemCount: tracks.length + 1,
             itemBuilder: (context, index) {
               if (index == 0) {
@@ -194,8 +191,7 @@ class PlaylistDetailPage extends ConsumerWidget {
                       size: 18,
                       color: theme.textTertiary,
                     ),
-                    onPressed: () =>
-                        _removeItem(context, ref, data, item),
+                    onPressed: () => _removeItem(context, ref, data, item),
                   ),
                 ),
               );
@@ -248,7 +244,9 @@ class PlaylistDetailPage extends ConsumerWidget {
     final before = to < items.length ? items[to].id : null;
 
     try {
-      await ref.read(apiProvider).movePlaylistItem(
+      await ref
+          .read(apiProvider)
+          .movePlaylistItem(
             data.playlist.id,
             moved.id,
             before,
@@ -341,7 +339,9 @@ class PlaylistDetailPage extends ConsumerWidget {
     );
     if (confirmed != true) return;
 
-    await ref.read(libraryControllerProvider.notifier).deletePlaylist(playlist.id);
+    await ref
+        .read(libraryControllerProvider.notifier)
+        .deletePlaylist(playlist.id);
     if (context.mounted) Navigator.of(context).pop();
   }
 }

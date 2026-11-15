@@ -7,19 +7,36 @@ import 'package:flutter/foundation.dart';
 /// The Rich Presence shown in Discord.
 ///
 /// The protocol is the local IPC of the Discord client: a JSON frame over a
-/// unix socket (Linux, macOS) or a named pipe (Windows). It is implemented
+/// Unix socket (Linux, macOS). Windows named pipes are not supported. It is implemented
 /// here directly, so the app does not depend on an unmaintained package.
 class DiscordService {
-  DiscordService._();
+  DiscordService._()
+    : socketPaths = null,
+      reconnectDelay = const Duration(seconds: 15);
+
+  @visibleForTesting
+  DiscordService.forTesting(
+    this.socketPaths, {
+    this.reconnectDelay = const Duration(milliseconds: 50),
+  });
+
+  final List<String>? socketPaths;
+  final Duration reconnectDelay;
 
   static final DiscordService instance = DiscordService._();
 
   /// The application id of the Rich Presence.
-  static const String clientId = '1561339119617974362';
+  static const String clientId = String.fromEnvironment(
+    'DISCORD_APPLICATION_ID',
+    defaultValue: '1561339119617974362',
+  );
 
   Socket? _socket;
   StreamSubscription<dynamic>? _subscription;
-  Timer? _heartbeat;
+  Timer? _handshakeTimeout;
+  final List<int> _buffer = [];
+  bool _ready = false;
+  int _generation = 0;
   Timer? _reconnect;
   int _nonce = 0;
   bool _enabled = false;
@@ -27,7 +44,7 @@ class DiscordService {
 
   bool get isEnabled => _enabled;
 
-  bool get isSupported => !kIsWeb && (Platform.isLinux || Platform.isMacOS || Platform.isWindows);
+  bool get isSupported => !kIsWeb && (Platform.isLinux || Platform.isMacOS);
 
   /// The state shown in Discord.
   String? _details;
@@ -54,14 +71,11 @@ class DiscordService {
   }
 
   /// The options of the Rich Presence.
-  void setOptions({
-    bool? showArtwork,
-    bool? showArtistImage,
-    bool? showTime,
-  }) {
+  void setOptions({bool? showArtwork, bool? showArtistImage, bool? showTime}) {
     if (showArtwork != null) _showArtwork = showArtwork;
     if (showArtistImage != null) _showArtistImage = showArtistImage;
     if (showTime != null) _showTime = showTime;
+    if (_enabled) unawaited(_sendActivity());
   }
 
   /// Updates the activity.
@@ -85,110 +99,135 @@ class DiscordService {
   }
 
   Future<void> _connect() async {
-    if (_socket != null || _connecting) return;
+    if (!_enabled || _socket != null || _connecting) return;
     _connecting = true;
-
+    final generation = _generation;
     try {
-      final path = _socketPath();
-      if (path == null) {
-        _connecting = false;
+      Socket? connected;
+      for (final path in socketPaths ?? _socketPaths()) {
+        try {
+          connected = await Socket.connect(
+            InternetAddress(path, type: InternetAddressType.unix),
+            0,
+            timeout: const Duration(seconds: 2),
+          );
+          break;
+        } on SocketException {
+          // Discord may expose any of the ten IPC slots.
+        }
+      }
+      if (generation != _generation || !_enabled) {
+        connected?.destroy();
         return;
       }
-
-      final socket = await Socket.connect(
-        path,
-        0,
-        timeout: const Duration(seconds: 2),
-      );
-      _socket = socket;
-
-      _subscription = socket.listen(
-        (data) => _onData(data),
-        onError: (Object error) {
-          debugPrint('[discord] socket error: $error');
-          _scheduleReconnect();
-        },
+      if (connected == null) {
+        _scheduleReconnect();
+        return;
+      }
+      _socket = connected;
+      _subscription = connected.listen(
+        _onData,
+        onError: (Object error) => _scheduleReconnect(),
         onDone: _scheduleReconnect,
         cancelOnError: true,
       );
-
-      // The handshake.
-      _send({
-        'cmd': 'DISPATCH',
-        'evt': 'READY',
-        'data': {
-          'v': 1,
-          'config': {
-            'client_id': clientId,
-            'properties': {'os': Platform.operatingSystem},
-          },
-        },
-      });
-
-      // The heartbeat keeps the connection alive.
-      _heartbeat?.cancel();
-      _heartbeat = Timer.periodic(const Duration(seconds: 15), (_) {
-        _send({
-          'cmd': 'SET_ACTIVITY',
-          'args': {
-            'pid': pid,
-            'activity': _activity(),
-          },
-        });
-      });
-
-      await _sendActivity();
-      _connecting = false;
+      _sendFrame(0, {'v': 1, 'client_id': clientId});
+      _handshakeTimeout = Timer(const Duration(seconds: 5), _scheduleReconnect);
     } catch (error) {
-      _connecting = false;
       debugPrint('[discord] not connected: $error');
-      _scheduleReconnect();
+      if (generation == _generation) _scheduleReconnect();
+    } finally {
+      _connecting = false;
+      if (_enabled && _socket == null && _reconnect == null) {
+        _reconnect = Timer(reconnectDelay, _connect);
+      }
     }
   }
 
   Future<void> _disconnect() async {
-    _heartbeat?.cancel();
-    _heartbeat = null;
+    _generation++;
+    _handshakeTimeout?.cancel();
+    _handshakeTimeout = null;
     _reconnect?.cancel();
     _reconnect = null;
-    await _subscription?.cancel();
+    _ready = false;
+    _buffer.clear();
+    final subscription = _subscription;
     _subscription = null;
-    try {
-      _socket?.destroy();
-    } catch (_) {}
+    _socket?.destroy();
     _socket = null;
+    await subscription?.cancel();
+  }
+
+  Future<void> dispose() async {
+    _enabled = false;
+    await _disconnect();
   }
 
   void _scheduleReconnect() {
     unawaited(_disconnect());
     if (!_enabled) return;
-    _reconnect?.cancel();
-    _reconnect = Timer(const Duration(seconds: 15), _connect);
+    _reconnect = Timer(reconnectDelay, _connect);
   }
 
-  void _onData(dynamic data) {
-    // The Discord client only sends the acknowledgements.
+  void _onData(List<int> data) {
+    _buffer.addAll(data);
+    while (_buffer.length >= 8) {
+      final header = ByteData.sublistView(
+        Uint8List.fromList(_buffer.sublist(0, 8)),
+      );
+      final opcode = header.getUint32(0, Endian.little);
+      final length = header.getUint32(4, Endian.little);
+      if (length > 1024 * 1024) {
+        _scheduleReconnect();
+        return;
+      }
+      if (_buffer.length < 8 + length) return;
+      final payload = Uint8List.fromList(_buffer.sublist(8, 8 + length));
+      _buffer.removeRange(0, 8 + length);
+      if (opcode == 3) {
+        _writeFrame(4, payload);
+      } else if (opcode == 2) {
+        _scheduleReconnect();
+        return;
+      } else if (opcode == 1) {
+        try {
+          final message = jsonDecode(utf8.decode(payload));
+          if (message is Map && message['evt'] == 'READY') {
+            _ready = true;
+            _handshakeTimeout?.cancel();
+            unawaited(_sendActivity());
+          } else if (message is Map && message['evt'] == 'ERROR') {
+            debugPrint('[discord] RPC error: ${message['data']}');
+          }
+        } on FormatException {
+          _scheduleReconnect();
+          return;
+        }
+      }
+    }
   }
 
-  void _send(Map<String, dynamic> payload) {
-    final socket = _socket;
-    if (socket == null) return;
+  void _sendFrame(int opcode, Map<String, dynamic> payload) =>
+      _writeFrame(opcode, utf8.encode(jsonEncode(payload)));
+
+  void _writeFrame(int opcode, List<int> payload) {
+    final frame = ByteData(8);
+    frame.setUint32(0, opcode, Endian.little);
+    frame.setUint32(4, payload.length, Endian.little);
     try {
-      socket.write('${jsonEncode(payload)}\n');
-    } catch (error) {
-      debugPrint('[discord] send failed: $error');
+      _socket?.add([...frame.buffer.asUint8List(), ...payload]);
+    } catch (_) {
+      _scheduleReconnect();
     }
   }
 
   Future<void> _sendActivity() async {
-    _nonce += 1;
-    _send({
+    if (!_ready) return;
+    _sendFrame(1, {
       'cmd': 'SET_ACTIVITY',
-      'args': {
-        'pid': pid,
-        'nonce': '$_nonce',
-        'activity': _activity(),
-      },
+      'nonce': '${++_nonce}',
+      'args': {'pid': pid, 'activity': _activity()},
     });
   }
 
@@ -223,34 +262,28 @@ class DiscordService {
     if (url == null || url.isEmpty || url.length > 512) return null;
     try {
       final uri = Uri.parse(url);
-      return uri.scheme == 'https' ? url : null;
+      return uri.scheme == 'https' && uri.host.isNotEmpty ? url : null;
     } catch (_) {
       return null;
     }
   }
 
-  /// The path of the Discord IPC socket.
-  static String? _socketPath() {
-    if (Platform.isWindows) {
-      return r'\\.\pipe\discord-ipc-0';
-    }
-    final runtimeDir = Platform.environment['XDG_RUNTIME_DIR'];
-    final candidates = <String>[
-      if (runtimeDir != null && runtimeDir.isNotEmpty)
-        '$runtimeDir/discord-ipc-0',
-      if (Platform.isMacOS)
-        '${Platform.environment['TMPDIR'] ?? '/tmp'}/com.discordapp.Discord/ipc.0',
-      '/tmp/discord-ipc-0',
-      '/var/run/discord-ipc-0',
-    ];
-    for (final candidate in candidates) {
-      if (candidate.isEmpty) continue;
-      if (Platform.isLinux || Platform.isMacOS) {
-        if (File(candidate).existsSync()) return candidate;
-      } else {
-        return candidate;
+  /// Windows named pipes need a native transport and are not supported here.
+  static Iterable<String> _socketPaths() sync* {
+    final directories = <String>{
+      for (final key in ['XDG_RUNTIME_DIR', 'TMPDIR', 'TMP', 'TEMP'])
+        if (Platform.environment[key]?.isNotEmpty ?? false)
+          Platform.environment[key]!,
+      '/tmp',
+      '/var/run',
+    };
+    for (final directory in directories) {
+      for (var slot = 0; slot < 10; slot++) {
+        yield '$directory/discord-ipc-$slot';
+        if (Platform.isLinux) {
+          yield '$directory/app/com.discordapp.Discord/discord-ipc-$slot';
+        }
       }
     }
-    return null;
   }
 }

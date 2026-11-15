@@ -1,3 +1,5 @@
+import '../../core/config/app_config.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_exception.dart';
@@ -47,6 +49,10 @@ class AuthController extends Notifier<AuthState> {
 
   /// Restores a persisted session and validates it against the backend.
   Future<void> initialize() async {
+    if (!AppConfig.hasConfiguredAccount) {
+      await enterLocalMode();
+      return;
+    }
     final session = ref.read(sessionProvider);
     final stored = await session.load();
     if (stored == null) {
@@ -63,6 +69,20 @@ class AuthController extends Notifier<AuthState> {
     try {
       final api = ref.read(apiProvider);
       final user = await api.getMe().timeout(const Duration(seconds: 6));
+      final cloudSession = ref
+          .read(supabaseClientProvider)
+          ?.auth
+          .currentSession;
+      if (cloudSession != null) {
+        await session.save(
+          AuthTokens(
+            accessToken: cloudSession.accessToken,
+            refreshToken: cloudSession.refreshToken ?? stored.refreshToken,
+            expiresAt: cloudSession.expiresAt,
+            user: user,
+          ),
+        );
+      }
       state = state.copyWith(
         user: user,
         isAuthenticated: true,
@@ -97,7 +117,14 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  Future<void> enterLocalMode() async {
+    ref.read(useCloudAccountProvider.notifier).state = false;
+    final user = await ref.read(apiProvider).getMe();
+    state = AuthState(user: user, isAuthenticated: true);
+  }
+
   Future<bool> login(String email, String password) async {
+    ref.read(useCloudAccountProvider.notifier).state = true;
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final tokens = await ref.read(apiProvider).login(email, password);
@@ -129,7 +156,9 @@ class AuthController extends Notifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final tokens = await ref.read(apiProvider).register(
+      final tokens = await ref
+          .read(apiProvider)
+          .register(
             email: email,
             password: password,
             username: username,
@@ -173,5 +202,6 @@ class AuthController extends Notifier<AuthState> {
 }
 
 /// The auth controller provider.
-final authControllerProvider =
-    NotifierProvider<AuthController, AuthState>(AuthController.new);
+final authControllerProvider = NotifierProvider<AuthController, AuthState>(
+  AuthController.new,
+);

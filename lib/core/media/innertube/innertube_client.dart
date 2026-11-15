@@ -15,7 +15,7 @@ class InnertubeClient {
     return <String, dynamic>{
       'endpoint': endpoint,
       'body': body,
-      if (visitorData != null) 'visitorData': visitorData,
+      'visitorData': ?visitorData,
     };
   }
 }

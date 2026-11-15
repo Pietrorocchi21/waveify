@@ -214,6 +214,16 @@
     "dailyMixesSubtitle": "Listas frescas personalizadas según tus artistas y géneros favoritos"
   },
   "library": {
+    "import_audio": "Importar audio",
+    "files_imported": "{count} archivos importados",
+    "on_device": "En este dispositivo",
+    "local_empty": "No hay audio en este dispositivo",
+    "local_hint": "Importa archivos de audio para empezar a escuchar.",
+    "cloud": "Nube",
+    "cloud_empty": "No hay audio en tu biblioteca en la nube",
+    "upload_cloud": "Subir a la nube",
+    "uploaded_cloud": "Subido a la nube",
+    "your_music": "Tu música",
     "title": "Biblioteca",
     "liked_songs": "Canciones que te gustan",
     "song": "canción",
@@ -245,6 +255,7 @@
     "remove_from_liked": "Quitar de canciones queridas"
   },
   "login": {
+    "continue_local": "Continuar sin una cuenta",
     "welcome_back": "Te damos la bienvenida",
     "sign_in_to_account": "Inicia sesión en tu cuenta",
     "auth_title_login": "Tu música, a tu manera",
@@ -356,6 +367,7 @@
     "repeat_off": "Repetir: desactivado",
     "repeat_all": "Repetir: todo",
     "repeat_one": "Repetir: canción",
+    "open_player": "Abrir reproductor",
     "nothing_playing": "Nada en reproducción",
     "choose_track": "Elige una canción en la búsqueda",
     "queue": "Cola",
@@ -441,6 +453,9 @@
     "type_to_search": "Escribe para buscar"
   },
   "settings": {
+    "updater": {
+      "unsupported": "Las actualizaciones automáticas no son compatibles con esta plataforma."
+    },
     "title": "Ajustes",
     "search_placeholder": "Buscar ajustes...",
     "subtitle": "Administra tus preferencias",

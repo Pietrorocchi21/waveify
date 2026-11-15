@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -52,6 +54,40 @@ class RemotePlaybackState {
   final DateTime? updatedAt;
 
   bool get hasTrack => trackId != null && trackId!.isNotEmpty;
+
+  /// Reject commands meant for another player, echoes and commands from an
+  /// earlier connection. Playback-only updates must never trigger the player.
+  static bool acceptsCommand(
+    Map<String, dynamic> row, {
+    required String deviceId,
+    required DateTime connectedAt,
+    String? lastCommandId,
+  }) {
+    final value = RemotePlaybackState.fromRow(row);
+    final sentAt = DateTime.tryParse('${row['command_created_at'] ?? ''}');
+    return value.deviceId == deviceId &&
+        row['command_sender_id'] != deviceId &&
+        value.commandId.isNotEmpty &&
+        value.commandId != lastCommandId &&
+        value.command != RemoteCommand.none &&
+        sentAt != null &&
+        !sentAt.isBefore(connectedAt);
+  }
+
+  RemotePlaybackState withCommand(RemotePlaybackState incoming) =>
+      RemotePlaybackState(
+        userId: userId,
+        deviceId: deviceId,
+        deviceName: deviceName,
+        trackId: trackId,
+        trackTitle: trackTitle,
+        trackArtist: trackArtist,
+        isPlaying: isPlaying,
+        positionSeconds: positionSeconds,
+        updatedAt: updatedAt,
+        command: incoming.command,
+        commandId: incoming.commandId,
+      );
 
   static RemoteCommand _commandFromRaw(String raw) {
     return RemoteCommand.values.firstWhere(
@@ -114,49 +150,69 @@ class RemoteState {
 /// device.
 ///
 /// Port of the "Remote" feature of the legacy apps: the state lives in the
-/// `playback_state` table of Supabase and the changes are received in real
+/// `waveify_playback_state` table of Supabase and the changes are received in real
 /// time through the realtime channel.
 class RemoteController extends Notifier<RemoteState> {
   static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-  static const String supabaseAnonKey =
-      String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const String supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+  );
 
-  static const String _table = 'playback_state';
+  static const String _table = 'waveify_playback_state';
+  static const String _publishableKey = String.fromEnvironment(
+    'SUPABASE_PUBLISHABLE_KEY',
+  );
   static const String _channelName = 'realtime-playback';
 
   SupabaseClient? _client;
   RealtimeChannel? _channel;
 
+  bool _disposed = false;
+  int _listenGeneration = 0;
+  int _connectionGeneration = 0;
+  Future<void>? _identityReady;
+  DateTime _connectedAt = DateTime.now().toUtc();
+  String? _lastCommandId;
+
   @override
   RemoteState build() {
-    final deviceId = _loadDeviceId();
+    final deviceId = const Uuid().v4();
+    _identityReady = Future<void>.microtask(() async {
+      final preferences = await SharedPreferences.getInstance();
+      final saved = preferences.getString('waveify.remote.device_id');
+      final id = saved ?? deviceId;
+      if (saved == null) {
+        await preferences.setString('waveify.remote.device_id', id);
+      }
+      if (!_disposed) {
+        state = state.copyWith(deviceId: id, deviceName: _loadDeviceName(id));
+      }
+    });
+    ref.onDispose(() {
+      _disposed = true;
+      final client = _client;
+      _client = null;
+      if (client != null) unawaited(client.dispose());
+    });
     return RemoteState(
-      isConfigured: supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty,
+      isConfigured:
+          supabaseUrl.isNotEmpty &&
+          (supabaseAnonKey.isNotEmpty || _publishableKey.isNotEmpty),
       deviceId: deviceId,
       deviceName: _loadDeviceName(deviceId),
     );
   }
 
-  String _loadDeviceId() {
-    // The identifier is kept in memory: it is regenerated on every start.
-    return _deviceIdCache ??= _generateId();
-  }
-
-  String? _deviceIdCache;
-
-  static String _generateId() {
-    final random = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
-    final salt = DateTime.now().hashCode.toRadixString(36);
-    return '$random-$salt';
-  }
-
-  String _loadDeviceName(String deviceId) {
-    final short = deviceId.split('-').first;
-    return 'Waveify $short';
-  }
+  String _loadDeviceName(String deviceId) =>
+      'Waveify ${deviceId.split('-').first}';
 
   /// Signs in to the Supabase account that links the devices.
-  Future<bool> connect({required String email, required String password}) async {
+  Future<bool> connect({
+    required String email,
+    required String password,
+  }) async {
+    await _identityReady;
+    if (_disposed || state.isConnecting) return false;
     if (!state.isConfigured) {
       state = state.copyWith(
         error: 'The Supabase credentials are not configured.',
@@ -164,13 +220,19 @@ class RemoteController extends Notifier<RemoteState> {
       return false;
     }
 
-    state = state.copyWith(isConnecting: true, clearError: true);
+    final attempt = ++_connectionGeneration;
+    state = state.copyWith(
+      isConnecting: true,
+      clearRemote: true,
+      clearError: true,
+    );
     try {
       await _ensureClient();
       final response = await _client!.auth.signInWithPassword(
         email: email,
         password: password,
       );
+      if (_disposed || attempt != _connectionGeneration) return false;
       if (response.session == null) {
         state = state.copyWith(
           isConnecting: false,
@@ -178,17 +240,28 @@ class RemoteController extends Notifier<RemoteState> {
         );
         return false;
       }
+      _connectedAt = DateTime.now().toUtc();
+      _lastCommandId = null;
       await _listen();
+      if (_disposed || attempt != _connectionGeneration) return false;
       state = state.copyWith(isAuthenticated: true, isConnecting: false);
       return true;
     } catch (error) {
-      state = state.copyWith(isConnecting: false, error: '$error');
+      if (_disposed || attempt != _connectionGeneration) return false;
+      state = state.copyWith(
+        isAuthenticated: false,
+        isConnecting: false,
+        error: '$error',
+      );
       return false;
     }
   }
 
   /// Signs out and stops listening.
   Future<void> disconnect() async {
+    _connectionGeneration++;
+    _listenGeneration++;
+    _connectedAt = DateTime.now().toUtc();
     final client = _client;
     final channel = _channel;
     _channel = null;
@@ -200,24 +273,29 @@ class RemoteController extends Notifier<RemoteState> {
     try {
       await _client?.auth.signOut();
     } catch (_) {}
-    state = state.copyWith(isAuthenticated: false, clearRemote: true);
+    if (_disposed) return;
+    state = state.copyWith(
+      isAuthenticated: false,
+      isConnecting: false,
+      clearRemote: true,
+    );
   }
 
   Future<SupabaseClient> _ensureClient() async {
     final existing = _client;
     if (existing != null) return existing;
 
-    await Supabase.initialize(
-      url: supabaseUrl,
-      publishableKey: supabaseAnonKey,
+    final client = SupabaseClient(
+      supabaseUrl,
+      supabaseAnonKey.isNotEmpty ? supabaseAnonKey : _publishableKey,
     );
-    final client = Supabase.instance.client;
     _client = client;
     return client;
   }
 
   /// Listens to the state published by the other device.
   Future<void> _listen() async {
+    final generation = ++_listenGeneration;
     final client = _client;
     if (client == null) return;
 
@@ -229,26 +307,59 @@ class RemoteController extends Notifier<RemoteState> {
     }
 
     final userId = client.auth.currentUser!.id;
-    final channel = client.channel(_channelName)
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: _table,
-        filter: PostgresChangeFilter(
-          type: PostgresChangeFilterType.eq,
-          column: 'user_id',
-          value: userId,
-        ),
-        callback: (payload) {
-          final row = payload.newRecord;
-          if (row.isEmpty) return;
-          final remote = RemotePlaybackState.fromRow(row);
-          // The state published by this device is ignored.
-          if (remote.deviceId == state.deviceId) return;
-          state = state.copyWith(remote: remote);
-        },
-      )
-      .subscribe();
+    final channel = client
+        .channel(_channelName)
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: _table,
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (payload) {
+            final row = payload.newRecord;
+            if (row.isEmpty) return;
+            final remote = RemotePlaybackState.fromRow(row);
+            if (_disposed || generation != _listenGeneration) return;
+            if (remote.deviceId == state.deviceId) {
+              if (!RemotePlaybackState.acceptsCommand(
+                row,
+                deviceId: state.deviceId,
+                connectedAt: _connectedAt,
+                lastCommandId: _lastCommandId,
+              )) {
+                return;
+              }
+              _lastCommandId = remote.commandId;
+              state = state.copyWith(
+                remote: (state.remote ?? const RemotePlaybackState())
+                    .withCommand(remote),
+              );
+            } else {
+              // Only commands addressed to this player may reach its listener.
+              state = state.copyWith(
+                remote: RemotePlaybackState.fromRow({
+                  ...row,
+                  'command': 'none',
+                  'command_id': '',
+                }),
+              );
+            }
+          },
+        )
+        .subscribe((status, error) {
+          if (_disposed || generation != _listenGeneration) return;
+          if (status == RealtimeSubscribeStatus.channelError ||
+              status == RealtimeSubscribeStatus.timedOut) {
+            state = state.copyWith(
+              error: 'Remote connection interrupted: ${error ?? status.name}',
+            );
+          } else if (status == RealtimeSubscribeStatus.subscribed) {
+            state = state.copyWith(clearError: true);
+          }
+        });
 
     _channel = channel;
 
@@ -259,16 +370,21 @@ class RemoteController extends Notifier<RemoteState> {
           .from(_table)
           .select('*')
           .eq('user_id', client.auth.currentUser!.id)
+          .neq('device_id', state.deviceId)
+          .order('updated_at', ascending: false)
           .limit(1);
+      if (_disposed || generation != _listenGeneration) return;
       for (final row in rows) {
-        final remote = RemotePlaybackState.fromRow(
-          Map<String, dynamic>.from(row),
-        );
+        final remote = RemotePlaybackState.fromRow({
+          ...row,
+          'command': 'none',
+          'command_id': '',
+        });
         if (remote.deviceId == state.deviceId) continue;
         state = state.copyWith(remote: remote);
       }
     } catch (error) {
-      debugPrint('[remote] initial state: $error');
+      rethrow;
     }
   }
 
@@ -284,7 +400,7 @@ class RemoteController extends Notifier<RemoteState> {
     if (client == null || !state.isAuthenticated) return;
 
     try {
-      await client.from(_table).upsert({
+      final values = <String, dynamic>{
         'user_id': client.auth.currentUser!.id,
         'device_id': state.deviceId,
         'device_name': state.deviceName,
@@ -293,10 +409,28 @@ class RemoteController extends Notifier<RemoteState> {
         'track_artist': trackArtist,
         'is_playing': isPlaying,
         'position_seconds': positionSeconds,
-        'command': RemoteCommand.none.name,
-      });
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
+      // An upsert can replace omitted command columns with insert defaults.
+      // Update only playback columns so a pending command survives publishing.
+      final existing = await client
+          .from(_table)
+          .update(values)
+          .eq('user_id', client.auth.currentUser!.id)
+          .eq('device_id', state.deviceId)
+          .select('device_id');
+      if (existing.isEmpty) {
+        await client
+            .from(_table)
+            .upsert(
+              values,
+              onConflict: 'user_id,device_id',
+              ignoreDuplicates: true,
+            );
+      }
     } catch (error) {
       debugPrint('[remote] publish: $error');
+      if (!_disposed) state = state.copyWith(error: '$error');
     }
   }
 
@@ -305,19 +439,28 @@ class RemoteController extends Notifier<RemoteState> {
     final client = _client;
     if (client == null || !state.isAuthenticated) return;
 
+    final target = state.remote;
+    if (target == null ||
+        target.deviceId == state.deviceId ||
+        command == RemoteCommand.none) {
+      return;
+    }
     try {
-      await client.from(_table).upsert({
-        'user_id': client.auth.currentUser!.id,
-        'device_id': state.deviceId,
-        'device_name': state.deviceName,
-        'command': command.name,
-        'command_id': _generateId(),
-      });
+      await client
+          .from(_table)
+          .update({
+            'command': command.name,
+            'command_id': const Uuid().v4(),
+            'command_sender_id': state.deviceId,
+            'command_created_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('user_id', client.auth.currentUser!.id)
+          .eq('device_id', target.deviceId);
     } catch (error) {
       debugPrint('[remote] command: $error');
+      if (!_disposed) state = state.copyWith(error: '$error');
     }
   }
-
 }
 
 /// The remote control provider.

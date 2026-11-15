@@ -1,3 +1,16 @@
+import '../../models/auth.dart';
+
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../cloud/cloud_config.dart';
+import '../cloud/supabase_api_client.dart';
+
+import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
+
+import '../local/local_library_store.dart';
+import '../local/local_api_client.dart';
+import '../config/app_config.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,13 +21,11 @@ import '../media/innertube/stream_resolver.dart';
 import '../music/aggregated_music_repository.dart';
 import '../music/music_source.dart';
 import '../../features/connectivity/connectivity_controller.dart';
-import '../../models/auth.dart';
 import '../network/api_client.dart';
 import '../network/catalog_service.dart';
 import '../network/waveify_api.dart';
 import '../storage/app_settings.dart';
 import '../theme/app_theme.dart';
-import '../utils/json.dart';
 
 // Re-exported so that importing the providers also brings the theme
 // extensions (`ThemeData.textTertiary` and friends) into scope.
@@ -47,7 +58,8 @@ class SettingsController extends Notifier<AppSettings> {
 
   Future<void> setShuffle(bool value) => update(_copyWith(shuffle: value));
 
-  Future<void> setRepeat(PlaybackRepeatMode mode) => update(_copyWith(repeat: mode));
+  Future<void> setRepeat(PlaybackRepeatMode mode) =>
+      update(_copyWith(repeat: mode));
 
   Future<void> setAutoplaySimilar(bool value) =>
       update(_copyWith(autoplaySimilar: value));
@@ -180,29 +192,71 @@ final translatorProvider = Provider<Translator>((ref) {
 });
 
 /// The auth session store.
-final sessionProvider = Provider<AuthSessionStore>((ref) {
+final Provider<AuthSessionStore> sessionProvider = Provider<AuthSessionStore>((
+  ref,
+) {
   final store = AuthSessionStore();
 
   // The refresh call needs the API, and the API needs the token from this
   // store: going through the provider graph would create a cycle, so the
   // refresh uses a dedicated client with the same auth flow but no custom signer.
   store.refreshPerform = (refreshToken) async {
-    final client = ApiClient();
-    final data = await client.request(
-      '/v1/auth/refresh',
-      method: 'POST',
-      body: {'refreshToken': refreshToken},
-      allowRefresh: false,
-      skipAuth: true,
-    );
-    return AuthTokens.fromJson(asRecord(data));
+    return ref.read(apiProvider).refreshSession(refreshToken);
   };
 
   return store;
 });
 
 /// The generic HTTP client.
-final apiClientProvider = Provider<ApiClient>((ref) {
+final localLibraryStoreProvider = Provider<LocalLibraryStore>(
+  (ref) => LocalLibraryStore(),
+);
+
+final supabaseClientProvider = Provider<SupabaseClient?>((ref) {
+  if (!CloudConfig.isConfigured) return null;
+  final client = SupabaseClient(
+    CloudConfig.url,
+    CloudConfig.key,
+    authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
+  );
+  ref.onDispose(client.dispose);
+  return client;
+});
+
+final useCloudAccountProvider = StateProvider<bool>(
+  (ref) => AppConfig.hasConfiguredAccount,
+);
+
+final Provider<ApiClient> apiClientProvider = Provider<ApiClient>((ref) {
+  if (!ref.watch(useCloudAccountProvider)) {
+    return LocalApiClient(ref.watch(localLibraryStoreProvider));
+  }
+  final cloud = ref.watch(supabaseClientProvider);
+  if (cloud != null) {
+    final session = ref.watch(sessionProvider);
+    final subscription = cloud.auth.onAuthStateChange.listen((event) {
+      final tokens = event.session;
+      if (event.event == AuthChangeEvent.tokenRefreshed && tokens != null) {
+        session.save(
+          AuthTokens(
+            accessToken: tokens.accessToken,
+            refreshToken:
+                tokens.refreshToken ?? session.session?.refreshToken ?? '',
+            expiresAt: tokens.expiresAt,
+            user: session.session?.user,
+          ),
+        );
+      }
+    });
+    ref.onDispose(subscription.cancel);
+    return SupabaseApiClient(
+      cloud,
+      refreshTokenProvider: () => session.session?.refreshToken,
+    );
+  }
+  if (!AppConfig.hasConfiguredBackend) {
+    return LocalApiClient(ref.watch(localLibraryStoreProvider));
+  }
   final session = ref.watch(sessionProvider);
   final client = ApiClient(
     tokenProvider: () => session.validAccessToken(),
@@ -236,39 +290,43 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 });
 
 /// The typed Waveify API.
-final apiProvider = Provider<WaveifyApi>((ref) {
+final Provider<WaveifyApi> apiProvider = Provider<WaveifyApi>((ref) {
   return WaveifyApi(ref.watch(apiClientProvider));
 });
 
 /// Multi-source music aggregation: local-first, remote-fallback and provider
 /// abstraction for future integrations such as YouTube Music, SoundCloud or a
 /// custom backend.
+final youtubeClientProvider = Provider<yt.YoutubeExplode>((ref) {
+  final client = yt.YoutubeExplode();
+  ref.onDispose(client.close);
+  return client;
+});
+
 final musicSourcesProvider = Provider<List<MusicSource>>((ref) {
   final api = ref.watch(apiProvider);
   return [
-    LocalMusicSource(),
-    YouTubeMusicSource(
-      catalog: InnertubeCatalog(),
-      resolver: StreamResolver(),
-    ),
+    LocalMusicSource(store: ref.watch(localLibraryStoreProvider)),
+    YouTubeMusicSource(catalog: InnertubeCatalog(), resolver: StreamResolver()),
     WaveifyRemoteSource(api: api),
   ];
 });
 
 final musicRepositoryProvider = Provider<AggregatedMusicRepository>((ref) {
-  return AggregatedMusicRepository(
-    sources: ref.watch(musicSourcesProvider),
-  );
+  return AggregatedMusicRepository(sources: ref.watch(musicSourcesProvider));
 });
 
 /// The YouTube stream resolver.
 final streamResolverProvider = Provider<StreamResolver>((ref) {
-  return StreamResolver();
+  return StreamResolver(
+    api: ref.watch(apiProvider),
+    youtube: ref.watch(youtubeClientProvider),
+  );
 });
 
 /// The InnerTube catalog (search, albums, playlists, artists).
 final innertubeCatalogProvider = Provider<InnertubeCatalog>((ref) {
-  return InnertubeCatalog();
+  return InnertubeCatalog(client: ref.watch(youtubeClientProvider));
 });
 
 /// The catalog service: InnerTube first, the backend as a fallback.
@@ -278,4 +336,3 @@ final catalogProvider = Provider<CatalogService>((ref) {
     api: ref.watch(apiProvider),
   );
 });
-

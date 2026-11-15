@@ -24,36 +24,39 @@ class AppColors {
   static const Color lightButtonBg = Color(0xFF18181B);
   static const Color lightButtonText = Color(0xFFFFFFFF);
 
-  // --- Dark - iBaila inspired atmospheric palette ---
-  static const Color darkCanvas = Color(0xFF030306);        // Near black
-  static const Color darkSurface = Color(0xFF0A0A12);       // Charcoal
-  static const Color darkPrimary = Color(0xFF0A0A12);       // Primary bg
-  static const Color darkElevated = Color(0xFF11111A);      // Elevated
-  static const Color darkPanel = Color(0xFF16161F);         // Panel/card
-  static const Color darkOverlay = Color(0xCC030306);       // Modal overlay
+  // --- Dark - WAVEIFY nocturnal palette ---
+  static const Color darkCanvas = DesignTokens.baseCanvas; // Near black
+  static const Color darkSurface = DesignTokens.baseSurface; // Charcoal
+  static const Color darkPrimary = DesignTokens.baseSurface; // Primary bg
+  static const Color darkElevated = DesignTokens.baseElevated; // Elevated
+  static const Color darkPanel = DesignTokens.basePanel; // Panel/card
+  static const Color darkOverlay = DesignTokens.baseOverlay; // Modal overlay
   static const Color darkToolbox = Color(0x0AFFFFFF);
   static const Color darkToolboxActive = Color(0x17FFFFFF);
-  static const Color darkBorderPrimary = Color(0xFF1E1E2A);  // Subtle
-  static const Color darkBorderSecondary = Color(0xFF2A2A3A); // Medium
-  static const Color darkBorderTertiary = Color(0xFF3A3A4A);  // Strong
-  static const Color darkTextPrimary = Color(0xFFFFFFFF);
-  static const Color darkTextSecondary = Color(0xB3FFFFFF);
-  static const Color darkTextTertiary = Color(0x73FFFFFF);
+  static const Color darkBorderPrimary =
+      DesignTokens.baseBorderPrimary; // Subtle
+  static const Color darkBorderSecondary =
+      DesignTokens.baseBorderSecondary; // Medium
+  static const Color darkBorderTertiary =
+      DesignTokens.baseBorderTertiary; // Strong
+  static const Color darkTextPrimary = DesignTokens.baseTextPrimary;
+  static const Color darkTextSecondary = DesignTokens.baseTextSecondary;
+  static const Color darkTextTertiary = DesignTokens.baseTextTertiary;
   static const Color darkButtonBg = Color(0xFFF4F4F4);
   static const Color darkButtonText = Color(0xFF000000);
 
   // --- Accents ---
-  static const Color lightAccent = Color(0xFFFF3B3B);
-  static const Color darkAccent = Color(0xFFFF4D4D);
+  static const Color lightAccent = Color(0xFF9BBEFA);
+  static const Color darkAccent = Color(0xFF9BBEFA);
   static const Color lightAccentSecondary = Color(0xFFFF5C5C);
-  static const Color darkAccentSecondary = Color(0xFFFF8A8A);
+  static const Color darkAccentSecondary = Color(0xFFC3B5F6);
   static const Color lightAccentWarning = Color(0xFFD97706);
   static const Color darkAccentWarning = Color(0xFFFFDE9E);
 }
 
 /// The 13 branding variants of the app.
 enum AccentVariant {
-  defaultVariant('default', 'logo-default.svg', Color(0xFFFF3B3B)),
+  defaultVariant('default', 'logo-default.svg', Color(0xFF9BBEFA)),
   spotify('spotify', 'logo-spotify.svg', Color(0xFF1DB954)),
   discord('discord', 'logo-discord.svg', Color(0xFF5865F2)),
   telegram('telegram', 'logo-telegram.svg', Color(0xFF26A5E4)),
@@ -174,12 +177,19 @@ class AppTheme {
     final colorScheme = ColorScheme(
       brightness: brightness,
       primary: accent,
-      onPrimary: buttonText,
+      onPrimary:
+          ThemeData.estimateBrightnessForColor(accent) == Brightness.light
+          ? const Color(0xFF101521)
+          : Colors.white,
       secondary: accentSecondary,
       onSecondary: buttonText,
       error: const Color(0xFFEF4444),
       onError: Colors.white,
       surface: surface,
+      onSurfaceVariant: textSecondary,
+      surfaceContainerLow: primaryBg,
+      surfaceContainer: elevated,
+      surfaceContainerHigh: panel,
       onSurface: textPrimary,
       surfaceContainerHighest: panel,
       outline: borderSecondary,
@@ -195,30 +205,47 @@ class AppTheme {
       splashFactory: InkSparkle.splashFactory,
     );
 
-    // Custom text theme with iBaila-inspired hierarchy
-    final textTheme = base.textTheme.apply(
-      bodyColor: textPrimary,
-      displayColor: textPrimary,
-    ).copyWith(
-      displayLarge: DesignTokens.textDisplayLarge.copyWith(color: textPrimary),
-      displayMedium: DesignTokens.textDisplayMedium.copyWith(color: textPrimary),
-      displaySmall: DesignTokens.textDisplaySmall.copyWith(color: textPrimary),
-      headlineLarge: DesignTokens.textHeadlineLarge.copyWith(color: textPrimary),
-      headlineMedium: DesignTokens.textHeadlineMedium.copyWith(color: textPrimary),
-      headlineSmall: DesignTokens.textHeadlineSmall.copyWith(color: textPrimary),
-      titleLarge: DesignTokens.textTitleLarge.copyWith(color: textPrimary),
-      titleMedium: DesignTokens.textTitleMedium.copyWith(color: textPrimary),
-      titleSmall: DesignTokens.textTitleSmall.copyWith(color: textPrimary),
-      bodyLarge: DesignTokens.textBodyLarge.copyWith(color: textPrimary),
-      bodyMedium: DesignTokens.textBodyMedium.copyWith(color: textSecondary),
-      bodySmall: DesignTokens.textBodySmall.copyWith(color: textTertiary),
-      labelLarge: DesignTokens.textLabelLarge.copyWith(color: textPrimary),
-      labelMedium: DesignTokens.textLabelMedium.copyWith(color: textSecondary),
-      labelSmall: DesignTokens.textLabelSmall.copyWith(color: textTertiary),
-    );
+    // Custom text theme with WAVEIFY type hierarchy
+    final textTheme = base.textTheme
+        .apply(bodyColor: textPrimary, displayColor: textPrimary)
+        .copyWith(
+          displayLarge: DesignTokens.textDisplayLarge.copyWith(
+            color: textPrimary,
+          ),
+          displayMedium: DesignTokens.textDisplayMedium.copyWith(
+            color: textPrimary,
+          ),
+          displaySmall: DesignTokens.textDisplaySmall.copyWith(
+            color: textPrimary,
+          ),
+          headlineLarge: DesignTokens.textHeadlineLarge.copyWith(
+            color: textPrimary,
+          ),
+          headlineMedium: DesignTokens.textHeadlineMedium.copyWith(
+            color: textPrimary,
+          ),
+          headlineSmall: DesignTokens.textHeadlineSmall.copyWith(
+            color: textPrimary,
+          ),
+          titleLarge: DesignTokens.textTitleLarge.copyWith(color: textPrimary),
+          titleMedium: DesignTokens.textTitleMedium.copyWith(
+            color: textPrimary,
+          ),
+          titleSmall: DesignTokens.textTitleSmall.copyWith(color: textPrimary),
+          bodyLarge: DesignTokens.textBodyLarge.copyWith(color: textPrimary),
+          bodyMedium: DesignTokens.textBodyMedium.copyWith(
+            color: textSecondary,
+          ),
+          bodySmall: DesignTokens.textBodySmall.copyWith(color: textTertiary),
+          labelLarge: DesignTokens.textLabelLarge.copyWith(color: textPrimary),
+          labelMedium: DesignTokens.textLabelMedium.copyWith(
+            color: textSecondary,
+          ),
+          labelSmall: DesignTokens.textLabelSmall.copyWith(color: textTertiary),
+        );
 
     return base.copyWith(
-      textTheme: textTheme,
+      textTheme: textTheme.apply(fontFamily: 'Roboto'),
       dividerColor: borderPrimary,
       iconTheme: IconThemeData(color: textSecondary),
       appBarTheme: AppBarTheme(
@@ -274,7 +301,7 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: accent,
-          foregroundColor: buttonText,
+          foregroundColor: colorScheme.onPrimary,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(DesignTokens.radiusMd),
           ),
@@ -331,9 +358,9 @@ class AppTheme {
         ),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: Colors.transparent,
+        backgroundColor: panel,
         surfaceTintColor: Colors.transparent,
-        shadowColor: Colors.transparent,
+        shadowColor: Colors.black26,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DesignTokens.radiusXxl),
         ),
@@ -358,10 +385,7 @@ class AppTheme {
           fontSize: 11,
           fontWeight: FontWeight.w500,
         ),
-        unselectedLabelTextStyle: TextStyle(
-          color: textTertiary,
-          fontSize: 11,
-        ),
+        unselectedLabelTextStyle: TextStyle(color: textTertiary, fontSize: 11),
         labelType: NavigationRailLabelType.all,
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -377,10 +401,7 @@ class AppTheme {
               fontWeight: FontWeight.w500,
             );
           }
-          return TextStyle(
-            color: textTertiary,
-            fontSize: 11,
-          );
+          return TextStyle(color: textTertiary, fontSize: 11);
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
@@ -438,9 +459,13 @@ extension ThemeTokens on ThemeData {
   // Glass-aware surface colors
   Color get glassSurface => brightness == Brightness.dark
       ? AppColors.darkSurface.withValues(alpha: DesignTokens.glassOpacityLight)
-      : AppColors.lightSurface.withValues(alpha: DesignTokens.glassOpacityLight);
+      : AppColors.lightSurface.withValues(
+          alpha: DesignTokens.glassOpacityLight,
+        );
 
   Color get glassSurfaceStrong => brightness == Brightness.dark
       ? AppColors.darkSurface.withValues(alpha: DesignTokens.glassOpacityStrong)
-      : AppColors.lightSurface.withValues(alpha: DesignTokens.glassOpacityStrong);
+      : AppColors.lightSurface.withValues(
+          alpha: DesignTokens.glassOpacityStrong,
+        );
 }

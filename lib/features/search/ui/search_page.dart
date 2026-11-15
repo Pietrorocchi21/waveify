@@ -59,7 +59,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       _query = query;
     });
     try {
-      final results = await ref.read(catalogProvider).search(query, type: _type);
+      final results = await ref
+          .read(catalogProvider)
+          .search(query, type: _type);
       if (!mounted) return;
       setState(() {
         _results = results;
@@ -108,7 +110,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
+          child: Wrap(
+            spacing: 0,
+            runSpacing: 8,
             children: [
               for (final entry in const [
                 ('all', 'search.all'),
@@ -182,10 +186,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               runSpacing: 8,
               children: [
                 for (final item in others)
-                  _SearchResultChip(
-                    item: item,
-                    onTap: () => _openResult(item),
-                  ),
+                  _SearchResultChip(item: item, onTap: () => _openResult(item)),
               ],
             ),
           ),

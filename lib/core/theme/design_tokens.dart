@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Extended design tokens for the iBaila-inspired WAVEIFY redesign.
+/// Shared tokens for WAVEIFY’s nocturnal listening space.
 /// Centralizes colors, spacing, radii, shadows, glass effects, and animation durations.
 class DesignTokens {
   DesignTokens._();
@@ -8,20 +8,20 @@ class DesignTokens {
   // ===========================================================================
   // BASE COLORS - Dark atmospheric palette (near-black, charcoal, midnight blue)
   // ===========================================================================
-  static const Color _baseCanvas = Color(0xFF030306);
-  static const Color _baseSurface = Color(0xFF0A0A12);
-  static const Color _baseElevated = Color(0xFF11111A);
-  static const Color _basePanel = Color(0xFF16161F);
-  static const Color _baseOverlay = Color(0xCC030306);
+  static const Color baseCanvas = Color(0xFF030306);
+  static const Color baseSurface = Color(0xFF0A0A12);
+  static const Color baseElevated = Color(0xFF11111A);
+  static const Color basePanel = Color(0xFF16161F);
+  static const Color baseOverlay = Color(0xCC030306);
 
-  static const Color _baseTextPrimary = Color(0xFFFFFFFF);
-  static const Color _baseTextSecondary = Color(0xB3FFFFFF);
-  static const Color _baseTextTertiary = Color(0x73FFFFFF);
-  static const Color _baseTextQuaternary = Color(0x4DFFFFFF);
+  static const Color baseTextPrimary = Color(0xFFFFFFFF);
+  static const Color baseTextSecondary = Color(0xB3FFFFFF);
+  static const Color baseTextTertiary = Color(0xA3FFFFFF);
+  static const Color baseTextQuaternary = Color(0x4DFFFFFF);
 
-  static const Color _baseBorderPrimary = Color(0xFF1E1E2A);
-  static const Color _baseBorderSecondary = Color(0xFF2A2A3A);
-  static const Color _baseBorderTertiary = Color(0xFF3A3A4A);
+  static const Color baseBorderPrimary = Color(0xFF1E1E2A);
+  static const Color baseBorderSecondary = Color(0xFF2A2A3A);
+  static const Color baseBorderTertiary = Color(0xFF3A3A4A);
 
   // ===========================================================================
   // AMBIENT GRADIENTS
@@ -129,7 +129,7 @@ class DesignTokens {
   // ===========================================================================
   // SHADOWS
   // ===========================================================================
-  static List<BoxShadow> shadowSubtle = [
+  static final List<BoxShadow> shadowSubtle = [
     BoxShadow(
       color: Colors.black.withValues(alpha: 0.15),
       blurRadius: 8,
@@ -137,7 +137,7 @@ class DesignTokens {
     ),
   ];
 
-  static List<BoxShadow> shadowDefault = [
+  static final List<BoxShadow> shadowDefault = [
     BoxShadow(
       color: Colors.black.withValues(alpha: 0.2),
       blurRadius: 16,
@@ -150,7 +150,7 @@ class DesignTokens {
     ),
   ];
 
-  static List<BoxShadow> shadowElevated = [
+  static final List<BoxShadow> shadowElevated = [
     BoxShadow(
       color: Colors.black.withValues(alpha: 0.3),
       blurRadius: 28,
@@ -163,7 +163,7 @@ class DesignTokens {
     ),
   ];
 
-  static List<BoxShadow> shadowPlayer = [
+  static final List<BoxShadow> shadowPlayer = [
     BoxShadow(
       color: Colors.black.withValues(alpha: 0.4),
       blurRadius: 40,
@@ -214,6 +214,7 @@ class DesignTokens {
   // TYPOGRAPHY SCALE
   // ===========================================================================
   static const TextStyle textDisplayLarge = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 56,
     fontWeight: FontWeight.w800,
     height: 1.1,
@@ -221,6 +222,7 @@ class DesignTokens {
   );
 
   static const TextStyle textDisplayMedium = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 44,
     fontWeight: FontWeight.w700,
     height: 1.15,
@@ -228,6 +230,7 @@ class DesignTokens {
   );
 
   static const TextStyle textDisplaySmall = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 36,
     fontWeight: FontWeight.w700,
     height: 1.2,
@@ -235,6 +238,7 @@ class DesignTokens {
   );
 
   static const TextStyle textHeadlineLarge = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 30,
     fontWeight: FontWeight.w700,
     height: 1.25,
@@ -242,6 +246,7 @@ class DesignTokens {
   );
 
   static const TextStyle textHeadlineMedium = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 24,
     fontWeight: FontWeight.w700,
     height: 1.3,
@@ -249,48 +254,56 @@ class DesignTokens {
   );
 
   static const TextStyle textHeadlineSmall = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 20,
     fontWeight: FontWeight.w700,
     height: 1.35,
   );
 
   static const TextStyle textTitleLarge = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 18,
     fontWeight: FontWeight.w600,
     height: 1.4,
   );
 
   static const TextStyle textTitleMedium = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 16,
     fontWeight: FontWeight.w600,
     height: 1.45,
   );
 
   static const TextStyle textTitleSmall = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 14,
     fontWeight: FontWeight.w600,
     height: 1.5,
   );
 
   static const TextStyle textBodyLarge = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 16,
     fontWeight: FontWeight.w400,
     height: 1.5,
   );
 
   static const TextStyle textBodyMedium = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 14,
     fontWeight: FontWeight.w400,
     height: 1.5,
   );
 
   static const TextStyle textBodySmall = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 12,
     fontWeight: FontWeight.w400,
     height: 1.5,
   );
 
   static const TextStyle textLabelLarge = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 14,
     fontWeight: FontWeight.w500,
     height: 1.4,
@@ -298,6 +311,7 @@ class DesignTokens {
   );
 
   static const TextStyle textLabelMedium = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 12,
     fontWeight: FontWeight.w500,
     height: 1.4,
@@ -305,6 +319,7 @@ class DesignTokens {
   );
 
   static const TextStyle textLabelSmall = TextStyle(
+    fontFamily: 'Roboto',
     fontSize: 11,
     fontWeight: FontWeight.w500,
     height: 1.4,
@@ -322,10 +337,13 @@ class DesignTokens {
   // ===========================================================================
   // CAROUSEL DEPTH
   // ===========================================================================
-  static const double carouselItemScale = 0.82;
-  static const double carouselItemOpacity = 0.55;
+  static const double carouselItemScale = 0.78;
+  static const double carouselItemOpacity = 0.65;
   static const double carouselSpacing = 24;
-  static const double carouselPerspective = 0.0015;
+  static const double carouselPerspective = 0.0009;
+  static const double carouselRotation = 0.35;
+  static const double sceneArtworkSize = 350;
+  static const double focusedArtworkSize = 390;
 }
 
 /// Extension for easy access to design tokens in widgets

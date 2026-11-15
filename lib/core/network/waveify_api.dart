@@ -86,10 +86,7 @@ class WaveifyApi {
   }
 
   Future<List<UserProfile>> searchUsers(String query) async {
-    final data = await client.request(
-      '/v1/users/search',
-      query: {'q': query},
-    );
+    final data = await client.request('/v1/users/search', query: {'q': query});
     return (asArray(data))
         .map((e) => UserProfile.fromJson(asRecord(e)))
         .toList(growable: false);
@@ -127,12 +124,12 @@ class WaveifyApi {
         .toList(growable: false);
   }
 
-  Future<List<UserProfile>> getUserPlaylists(String idOrUsername) async {
+  Future<List<UserPlaylist>> getUserPlaylists(String idOrUsername) async {
     final data = await client.request(
       '/v1/users/${Uri.encodeComponent(idOrUsername)}/playlists',
     );
     return (asRecord(data)?['items'] as List? ?? const [])
-        .map((e) => UserProfile.fromJson(asRecord(e)))
+        .map((e) => UserPlaylist.fromJson(asRecord(e)))
         .toList(growable: false);
   }
 
@@ -144,6 +141,13 @@ class WaveifyApi {
     return (asRecord(data)?['items'] as List? ?? const [])
         .map((e) => SearchItem.fromJson(asRecord(e)))
         .toList(growable: false);
+  }
+
+  Future<Map<String, dynamic>> getTrackStream(String id) async {
+    final data = await client.request(
+      '/v1/tracks/${Uri.encodeComponent(id)}/stream',
+    );
+    return asRecord(data) ?? {};
   }
 
   Future<Track> getTrack(String id) async {
@@ -194,8 +198,9 @@ class WaveifyApi {
   }
 
   Future<CatalogPlaylistDetails> getPlaylist(String id) async {
-    final data =
-        await client.request('/v1/playlists/${Uri.encodeComponent(id)}');
+    final data = await client.request(
+      '/v1/playlists/${Uri.encodeComponent(id)}',
+    );
     return CatalogPlaylistDetails.fromJson(asRecord(data));
   }
 
@@ -205,10 +210,7 @@ class WaveifyApi {
   }) async {
     final query = <String, dynamic>{'limit': '$limit'};
     if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
-    final data = await client.request(
-      '/v1/me/library/tracks',
-      query: query,
-    );
+    final data = await client.request('/v1/me/library/tracks', query: query);
     return LikedTracksPage.fromJson(asRecord(data));
   }
 
@@ -258,7 +260,9 @@ class WaveifyApi {
   Future<(UserPlaylist, List<UserPlaylistItem>)> getUserPlaylist(
     String id,
   ) async {
-    final data = await client.request('/v1/me/playlists/${Uri.encodeComponent(id)}');
+    final data = await client.request(
+      '/v1/me/playlists/${Uri.encodeComponent(id)}',
+    );
     final map = asRecord(data);
     final playlist = UserPlaylist.fromJson(asRecord(map?['playlist']));
     final items = (map?['items'] as List? ?? const [])
@@ -331,16 +335,11 @@ class WaveifyApi {
     final data = await client.request(
       '/v1/me/playlists/${Uri.encodeComponent(playlistId)}/tracks',
       method: 'POST',
-      body: {
-        'tracks': tracks.map((t) => t.toSnapshot()).toList(),
-      },
+      body: {'tracks': tracks.map((t) => t.toSnapshot()).toList()},
       timeout: const Duration(seconds: 60),
     );
     final map = asRecord(data);
-    return (
-      added: asInt(map?['added']),
-      rejected: asInt(map?['rejected']),
-    );
+    return (added: asInt(map?['added']), rejected: asInt(map?['rejected']));
   }
 
   Future<void> removePlaylistItem(String playlistId, String itemId) async {
@@ -384,10 +383,7 @@ class WaveifyApi {
   }) async {
     final query = <String, dynamic>{'limit': '$limit'};
     if (cursor != null && cursor.isNotEmpty) query['cursor'] = cursor;
-    final data = await client.request(
-      '/v1/me/history',
-      query: query,
-    );
+    final data = await client.request('/v1/me/history', query: query);
     return PlaybackHistoryResponse.fromJson(asRecord(data));
   }
 

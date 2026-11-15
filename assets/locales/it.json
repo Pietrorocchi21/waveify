@@ -212,6 +212,16 @@
     "dailyMixesSubtitle": "Playlist sempre nuove create attorno ai tuoi artisti e generi preferiti"
   },
   "library": {
+    "import_audio": "Importa audio",
+    "files_imported": "Importati {count} file",
+    "on_device": "Su questo dispositivo",
+    "local_empty": "Nessun audio su questo dispositivo",
+    "local_hint": "Importa file audio per iniziare ad ascoltare.",
+    "cloud": "Cloud",
+    "cloud_empty": "Nessun audio nella tua libreria cloud",
+    "upload_cloud": "Carica nel cloud",
+    "uploaded_cloud": "Caricato nel cloud",
+    "your_music": "La tua musica",
     "title": "Libreria",
     "liked_songs": "Brani che ti piacciono",
     "song": "brano",
@@ -243,6 +253,7 @@
     "remove_from_liked": "Rimuovi dai brani preferiti"
   },
   "login": {
+    "continue_local": "Continua senza un account",
     "welcome_back": "Bentornato",
     "sign_in_to_account": "Accedi al tuo account",
     "auth_title_login": "La tua musica, a modo tuo",
@@ -354,6 +365,7 @@
     "repeat_off": "Ripeti: disattivato",
     "repeat_all": "Ripeti: tutto",
     "repeat_one": "Ripeti: brano",
+    "open_player": "Apri player",
     "nothing_playing": "Nessuna riproduzione",
     "choose_track": "Scegli un brano dalla ricerca",
     "queue": "Coda",
@@ -438,6 +450,9 @@
     "type_to_search": "Digita per cercare"
   },
   "settings": {
+    "updater": {
+      "unsupported": "Gli aggiornamenti automatici non sono supportati su questa piattaforma."
+    },
     "title": "Impostazioni",
     "search_placeholder": "Cerca nelle impostazioni...",
     "subtitle": "Gestisci le tue preferenze",

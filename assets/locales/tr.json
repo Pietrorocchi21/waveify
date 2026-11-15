@@ -212,6 +212,16 @@
     "dailyMixesSubtitle": "Sevdiğin sanatçılar ve türler etrafında hazırlanan taze çalma listeleri"
   },
   "library": {
+    "import_audio": "Ses dosyalarını içe aktar",
+    "files_imported": "{count} dosya içe aktarıldı",
+    "on_device": "Bu cihazda",
+    "local_empty": "Bu cihazda ses dosyası yok",
+    "local_hint": "Dinlemeye başlamak için ses dosyalarını içe aktarın.",
+    "cloud": "Bulut",
+    "cloud_empty": "Bulut kitaplığınızda ses dosyası yok",
+    "upload_cloud": "Buluta yükle",
+    "uploaded_cloud": "Buluta yüklendi",
+    "your_music": "Müziğiniz",
     "title": "Kitaplık",
     "liked_songs": "Beğenilen Şarkılar",
     "song": "şarkı",
@@ -243,6 +253,7 @@
     "remove_from_liked": "Beğenilen şarkılardan kaldır"
   },
   "login": {
+    "continue_local": "Hesap olmadan devam et",
     "welcome_back": "Tekrar hoş geldin",
     "sign_in_to_account": "Hesabına giriş yap",
     "auth_title_login": "Senin müziğin, senin tarzın",
@@ -354,6 +365,7 @@
     "repeat_off": "Tekrar: kapalı",
     "repeat_all": "Tekrar: tümü",
     "repeat_one": "Tekrar: parça",
+    "open_player": "Oynatıcıyı aç",
     "nothing_playing": "Çalan bir şey yok",
     "choose_track": "Aramadan bir parça seç",
     "queue": "Sıra",
@@ -438,6 +450,9 @@
     "type_to_search": "Aramak için yaz"
   },
   "settings": {
+    "updater": {
+      "unsupported": "Bu platformda otomatik güncellemeler desteklenmiyor."
+    },
     "title": "Ayarlar",
     "search_placeholder": "Ayarlarda ara...",
     "subtitle": "Tercihlerini yönet",

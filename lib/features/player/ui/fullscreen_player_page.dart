@@ -3,341 +3,187 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../models/lyrics.dart';
-import '../../../models/track.dart';
 import '../../../shared/widgets/common.dart';
 import '../../lyrics/lyrics_controller.dart';
 import '../player_controller.dart';
-import '../player_state.dart';
-import 'cover_visualizer.dart';
+import '../../../shared/widgets/glass.dart';
+import '../../../shared/widgets/artwork_stage.dart';
+import '../../../core/theme/artwork_palette.dart';
+import '../../library/library_controller.dart';
 import 'mini_player.dart';
 
+void showLyricsSheet(BuildContext context) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  builder: (context) => GlassSheet(
+    maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+    padding: EdgeInsets.zero,
+    child: const _LyricsPanel(),
+  ),
+);
+
+/// Focused listening view. Existing detail tools open on demand instead of
+/// taking half the canvas away from the artwork.
 class FullscreenPlayerPage extends ConsumerWidget {
   const FullscreenPlayerPage({super.key});
+
+  void _openPanel(BuildContext context, Widget child) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => GlassSheet(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+        padding: EdgeInsets.zero,
+        child: child,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final t = ref.watch(translatorProvider);
-    final (track, playbackContext) = ref.watch(
+    final playback = ref.watch(
       playerControllerProvider.select(
-        (s) => (s.currentTrack, s.playbackContext),
+        (s) => (s.currentTrack, s.queue, s.currentIndex),
       ),
     );
+    final track = playback.$1;
     final controller = ref.read(playerControllerProvider.notifier);
-
+    final isPlaying = ref.watch(
+      playerControllerProvider.select((s) => s.isPlaying),
+    );
     if (track == null) {
       return Scaffold(
         appBar: AppBar(),
         body: EmptyState(
-          icon: Icons.music_note_rounded,
+          icon: Icons.music_note_outlined,
           title: t('player.nothing_playing'),
           description: t('player.choose_track'),
         ),
       );
     }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          children: [
-            Text(
-              t('player.playing_from'),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.textTertiary,
-              ),
+    final tracks = playback.$2.isEmpty ? [track] : playback.$2;
+    final liked = ref.watch(
+      libraryControllerProvider.select(
+        (s) => s.likedTracks.any((item) => item.id == track.id),
+      ),
+    );
+    return AmbientBackground(
+      accentColor: ref.watch(ambientAccentProvider),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Text(
+            'waveify',
+            style: theme.textTheme.titleMedium?.copyWith(letterSpacing: -0.5),
+          ),
+          actions: [
+            IconButton(
+              tooltip: t('player.lyrics'),
+              onPressed: () => _openPanel(context, const _LyricsPanel()),
+              icon: const Icon(Icons.lyrics_outlined),
             ),
-            Text(
-              playbackContext ?? t('common.app.name'),
-              style: theme.textTheme.titleSmall,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            IconButton(
+              tooltip: t('player.speed_pitch'),
+              onPressed: () => _openPanel(context, const _SpeedPitchPanel()),
+              icon: const Icon(Icons.tune_rounded),
+            ),
+            IconButton(
+              tooltip: t('player.queue'),
+              onPressed: () => showQueueSheet(context, ref),
+              icon: const Icon(Icons.queue_music_rounded),
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            tooltip: t('player.queue'),
-            onPressed: () => showQueueSheet(context, ref),
-            icon: const Icon(Icons.queue_music_rounded),
-          ),
-        ],
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth >= 980;
-
-          if (!isDesktop) {
-            return Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                    children: [
-                      SizedBox(height: 320, child: _ArtworkTab(track: track)),
-                      const SizedBox(height: 20),
-                      _TransportBar(controller: controller),
-                      const SizedBox(height: 16),
-                      const _LyricsPanel(),
-                      const SizedBox(height: 16),
-                      const _SpeedPitchPanel(),
-                    ],
-                  ),
-                ),
-                SafeArea(
-                  top: false,
-                  child: _TimelineRow(onSeek: controller.seek),
-                ),
-              ],
-            );
-          }
-
-          return Column(
+        body: SafeArea(
+          top: false,
+          child: Column(
             children: [
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 11,
-                        child: Column(
-                          children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(24),
-                                child: _ArtworkTab(track: track),
-                              ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          child: ArtworkStage(
+                            key: ValueKey(
+                              tracks.map((item) => item.id).join('|'),
                             ),
-                            const SizedBox(height: 20),
-                            _TransportBar(controller: controller),
-                          ],
+                            items: [
+                              for (final item in tracks)
+                                StageArtwork(
+                                  id: item.id,
+                                  title: item.title,
+                                  subtitle: item.artists,
+                                  coverUrl: item.coverUrl,
+                                  actionLabel: t(
+                                    item.id == track.id && isPlaying
+                                        ? 'common.pause'
+                                        : 'common.play',
+                                  ),
+                                  onActivate: () => item.id == track.id
+                                      ? controller.togglePlayPause()
+                                      : controller.playTrack(
+                                          item,
+                                          queue: tracks,
+                                          index: tracks.indexOf(item),
+                                          preserveQueue: true,
+                                        ),
+                                ),
+                            ],
+                            initialIndex: playback.$3 < 0 ? 0 : playback.$3,
+                            actionLabel: t('common.play'),
+                            large: true,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 24),
-                      const Expanded(
-                        flex: 10,
-                        child: Column(
-                          children: [
-                            Expanded(child: _LyricsPanel()),
-                            SizedBox(height: 16),
-                            SizedBox(height: 280, child: _SpeedPitchPanel()),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-              SafeArea(
-                top: false,
-                child: _TimelineRow(onSeek: controller.seek),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-String _formatMs(int milliseconds) {
-  final total = milliseconds ~/ 1000;
-  final minutes = total ~/ 60;
-  final seconds = total % 60;
-  return '$minutes:${seconds.toString().padLeft(2, '0')}';
-}
-
-class _TimelineRow extends ConsumerWidget {
-  const _TimelineRow({required this.onSeek});
-
-  final Future<void> Function(Duration) onSeek;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final (position, duration) = ref.watch(
-      playerControllerProvider.select((s) => (s.position, s.duration)),
-    );
-
-    final max = duration.inMilliseconds > 0
-        ? duration.inMilliseconds.toDouble()
-        : 1.0;
-    final value = duration.inMilliseconds > 0
-        ? position.inMilliseconds.clamp(0, duration.inMilliseconds).toDouble()
-        : 0.0;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: Row(
-        children: [
-          Text(
-            _formatMs(position.inMilliseconds),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.textTertiary,
-            ),
-          ),
-          Expanded(
-            child: Slider(
-              value: value,
-              max: max,
-              onChanged: (next) => onSeek(Duration(milliseconds: next.round())),
-            ),
-          ),
-          Text(
-            _formatMs(duration.inMilliseconds),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.textTertiary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ArtworkTab extends StatelessWidget {
-  const _ArtworkTab({required this.track});
-
-  final Track track;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        RepaintBoundary(
-          child: CoverVisualizer(
-            coverUrl: track.coverUrl,
-            tint: theme.colorScheme.primary,
-          ),
-        ),
-        ColoredBox(
-          color: theme.scaffoldBackgroundColor.withValues(alpha: 0.55),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(32),
-          child: Center(
-            child: AspectRatio(
-              aspectRatio: 1,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      blurRadius: 32,
-                      offset: const Offset(0, 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (MediaQuery.sizeOf(context).width < 900)
+                    const ShuffleButton(),
+                  IconButton(
+                    tooltip: t(liked ? 'common.unlike' : 'common.like'),
+                    onPressed: () => ref
+                        .read(libraryControllerProvider.notifier)
+                        .toggleLike(track),
+                    icon: Icon(
+                      liked
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
                     ),
-                  ],
-                ),
-                child: CoverImage(url: track.coverUrl, borderRadius: 24),
+                  ),
+                  if (MediaQuery.sizeOf(context).width < 900)
+                    const RepeatButton(),
+                ],
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 940),
+                    child: GlassPlayerBar(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      child: MiniPlayer(fullControls: true),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-      ],
-    );
-  }
-}
-
-class _TransportBar extends ConsumerWidget {
-  const _TransportBar({required this.controller});
-
-  final PlayerController controller;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final (status, track, volume) = ref.watch(
-      playerControllerProvider.select(
-        (s) => (s.status, s.currentTrack, s.volume),
-      ),
-    );
-    final isPlaying = status == PlayerStatus.playing;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        children: [
-          Text(
-            track?.title ?? '',
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            track?.artists ?? '',
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.textTertiary,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const ShuffleButton(),
-              const SizedBox(width: 8),
-              IconButton(
-                iconSize: 36,
-                tooltip: 'Previous',
-                onPressed: controller.skipPrevious,
-                icon: const Icon(Icons.skip_previous_rounded),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                iconSize: 38,
-                onPressed: controller.togglePlayPause,
-                icon: Icon(
-                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                iconSize: 36,
-                tooltip: 'Next',
-                onPressed: controller.skipNext,
-                icon: const Icon(Icons.skip_next_rounded),
-              ),
-              const SizedBox(width: 8),
-              const RepeatButton(),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.volume_down_rounded,
-                size: 18,
-                color: theme.textTertiary,
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 180,
-                child: Slider(value: volume, onChanged: controller.setVolume),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.volume_up_rounded,
-                size: 18,
-                color: theme.textTertiary,
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -348,13 +194,10 @@ class _LyricsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: const _LyricsTab(),
+    return const GlassPanel(
+      blur: 0,
+      padding: EdgeInsets.zero,
+      child: _LyricsTab(),
     );
   }
 }
@@ -364,13 +207,10 @@ class _SpeedPitchPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: const _SpeedPitchTab(),
+    return const GlassPanel(
+      blur: 0,
+      padding: EdgeInsets.zero,
+      child: _SpeedPitchTab(),
     );
   }
 }

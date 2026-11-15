@@ -10,11 +10,7 @@ import '../../models/track.dart';
 /// like the Electron client does. When a deployment does expose the
 /// catalog endpoints, the server is used as a fallback.
 class CatalogService {
-  CatalogService({
-    required InnertubeCatalog catalog,
-    required WaveifyApi api,
-  })  : _catalog = catalog,
-        _api = api;
+  CatalogService({required this._catalog, required this._api});
 
   final InnertubeCatalog _catalog;
   final WaveifyApi _api;
@@ -22,16 +18,12 @@ class CatalogService {
   /// Searches tracks, artists, albums and playlists.
   Future<List<SearchItem>> search(String query, {String type = 'all'}) async {
     try {
-      final results = await _catalog.search(query, type: type);
+      final results = await _api.search(query, type: type);
       if (results.isNotEmpty) return results;
     } catch (_) {
-      // Fall through to the server.
+      /* Try the external catalog if the account service has no catalog endpoint. */
     }
-    try {
-      return await _api.search(query, type: type);
-    } catch (_) {
-      return const [];
-    }
+    return _catalog.search(query, type: type);
   }
 
   /// The details of a track.
@@ -78,7 +70,12 @@ class CatalogService {
     String? waveId,
   }) async {
     try {
-      return await _catalog.getRadio(id, k: k);
+      return await _catalog.getRadio(
+        id,
+        k: k,
+        history: history,
+        waveId: waveId,
+      );
     } catch (_) {
       return _api.getRadio(id, history: history, k: k, waveId: waveId);
     }

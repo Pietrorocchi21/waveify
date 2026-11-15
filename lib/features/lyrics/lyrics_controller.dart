@@ -10,6 +10,7 @@ import '../player/player_controller.dart';
 import '../player/player_state.dart';
 import 'lyrics_parser.dart';
 import 'lyrics_stream.dart';
+import 'public_lyrics_client.dart';
 
 /// Lyrics state for the currently playing track.
 class LyricsState {
@@ -34,6 +35,7 @@ class LyricsState {
   LyricsState copyWith({
     String? trackId,
     bool clearTrackId = false,
+    bool clearContent = false,
     bool? isLoading,
     String? error,
     bool clearError = false,
@@ -46,8 +48,8 @@ class LyricsState {
       trackId: clearTrackId ? null : (trackId ?? this.trackId),
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
-      candidate: candidate ?? this.candidate,
-      parsed: parsed ?? this.parsed,
+      candidate: clearContent ? null : candidate ?? this.candidate,
+      parsed: clearContent ? null : parsed ?? this.parsed,
       providers: providers ?? this.providers,
       offsetMs: offsetMs ?? this.offsetMs,
     );
@@ -75,6 +77,12 @@ class LyricsController extends Notifier<LyricsState> {
       Future<void>.microtask(() => load(track));
     });
 
+    final current = ref.read(playerControllerProvider).currentTrack;
+    if (current != null) Future<void>.microtask(() => load(current));
+    ref.onDispose(() {
+      _loadToken++;
+      _cancel?.cancel('disposed');
+    });
     return LyricsState(offsetMs: offset);
   }
 
@@ -91,8 +99,7 @@ class LyricsController extends Notifier<LyricsState> {
       trackId: track.id,
       isLoading: true,
       clearError: true,
-      candidate: null,
-      parsed: null,
+      clearContent: true,
       providers: const [],
     );
 
@@ -135,12 +142,30 @@ class LyricsController extends Notifier<LyricsState> {
             );
             state = state.copyWith(providers: [...providers]);
           case LyricsDoneEvent():
-            state = state.copyWith(isLoading: false);
-            return;
+            break;
           case LyricsProviderErrorEvent():
           case LyricsProviderNotFoundEvent():
           case LyricsMetadataEvent():
             break;
+        }
+      }
+      if (best == null) {
+        final fallback = PublicLyricsClient();
+        try {
+          final candidate = await fallback.get(track, cancelToken: cancel);
+          if (token != _loadToken) return;
+          if (candidate != null) {
+            state = state.copyWith(
+              candidate: candidate,
+              parsed: LyricsParser.parse(
+                candidate.content,
+                format: candidate.format.raw,
+                songDurationMs: track.durationMs,
+              ).offset(state.offsetMs),
+            );
+          }
+        } finally {
+          fallback.close();
         }
       }
       state = state.copyWith(isLoading: false);
@@ -165,10 +190,19 @@ class LyricsController extends Notifier<LyricsState> {
 
   /// Applies a manual timing offset.
   Future<void> setOffset(int offsetMs) async {
+    final previousOffset = state.offsetMs;
     state = state.copyWith(offsetMs: offsetMs);
     final parsed = state.parsed;
     if (parsed != null) {
-      state = state.copyWith(parsed: parsed.offset(offsetMs));
+      final candidate = state.candidate;
+      state = state.copyWith(
+        parsed: candidate == null
+            ? parsed.offset(offsetMs - previousOffset)
+            : LyricsParser.parse(
+                candidate.content,
+                format: candidate.format.raw,
+              ).offset(offsetMs),
+      );
     }
     await ref.read(settingsProvider.notifier).setLyricsOffset(offsetMs);
   }

@@ -1,510 +1,394 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../models/history.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/glass.dart';
+import '../../../shared/widgets/artwork_stage.dart';
 import '../../../shared/widgets/track_widgets.dart';
 import '../../player/player_controller.dart';
 
-/// The daily mixes, refreshed on demand.
-final dailyMixesProvider = FutureProvider<DailyMixesResponse>((ref) async {
-  return ref.watch(apiProvider).getDailyMixes();
-});
-
-/// The popular tracks for a given time window.
+final dailyMixesProvider = FutureProvider<DailyMixesResponse>(
+  (ref) => ref.watch(apiProvider).getDailyMixes(),
+);
 final popularTracksProvider =
-    FutureProvider.family<PopularTracksResponse, String>((ref, window) async {
-  return ref.watch(apiProvider).getPopularTracks(window: window);
-});
+    FutureProvider.family<PopularTracksResponse, String>(
+      (ref, window) => ref.watch(apiProvider).getPopularTracks(window: window),
+    );
+final recentlyPlayedProvider = FutureProvider<PlaybackHistoryResponse>(
+  (ref) => ref.watch(apiProvider).getHistory(limit: 12),
+);
 
-/// The most recently played tracks.
-final recentlyPlayedProvider =
-    FutureProvider<PlaybackHistoryResponse>((ref) async {
-  return ref.watch(apiProvider).getHistory(limit: 12);
-});
-
-/// The landing page: mixes, popular tracks and recent listening.
+/// The home contains real mixes/history only; empty feeds don't create shelves.
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
-
   @override
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
   String _window = '7d';
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = ref.watch(translatorProvider);
     final hour = DateTime.now().hour;
-    final greeting = hour < 5
-        ? t('home.goodNight')
-        : hour < 12
-            ? t('home.goodMorning')
-            : hour < 18
-                ? t('home.goodAfternoon')
-                : t('home.goodEvening');
-
+    final greeting = t(
+      hour < 5
+          ? 'home.goodNight'
+          : hour < 12
+          ? 'home.goodMorning'
+          : hour < 18
+          ? 'home.goodAfternoon'
+          : 'home.goodEvening',
+    );
     final mixes = ref.watch(dailyMixesProvider);
     final popular = ref.watch(popularTracksProvider(_window));
     final recent = ref.watch(recentlyPlayedProvider);
-
-    return AmbientBackground(
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(DesignTokens.spaceXxl, DesignTokens.spaceXxxl, DesignTokens.spaceXxl, DesignTokens.spaceLg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    greeting,
-                    style: DesignTokens.textDisplaySmall.copyWith(
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: DesignTokens.spaceXs),
-                  Text(
-                    t('common.app.description'),
-                    style: DesignTokens.textBodyMedium.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          mixes.when(
-            loading: () => const SliverToBoxAdapter(child: LoadingState()),
-            error: (err, _) => SliverToBoxAdapter(
-              child: ErrorState(
-                message: '',
-                onRetry: () => ref.invalidate(dailyMixesProvider),
-              ),
-            ),
-            data: (data) {
-              if (data.items.isEmpty) return const SliverToBoxAdapter();
-              return SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _GlassSectionHeader(
-                      title: t('home.dailyMixes'),
-                      subtitle: t('home.dailyMixesSubtitle'),
-                    ),
-                    SizedBox(
-                      height: 250,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spaceXl),
-                        itemCount: data.items.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: DesignTokens.spaceLg),
-                        itemBuilder: (context, index) {
-                          final mix = data.items[index];
-                          return _GlassMixCard(
-                            title: mix.title,
-                            subtitle: mix.description,
-                            coverUrl: mix.cover?.url ?? '',
-                            onTap: () => ref
-                                .read(playerControllerProvider.notifier)
-                                .playTrack(
-                                  mix.tracks.first,
-                                  queue: mix.tracks,
-                                  context: 'mix:',
-                                  contextCover: mix.cover?.url,
-                                ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+    final playback = ref.watch(
+      playerControllerProvider.select(
+        (s) => (s.currentTrack, s.queue, s.currentIndex),
+      ),
+    );
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final inset = wide ? 36.0 : 20.0;
+    final controller = ref.read(playerControllerProvider.notifier);
+    final tracks = playback.$2.isNotEmpty
+        ? playback.$2
+        : playback.$1 != null
+        ? [playback.$1!]
+        : popular.asData?.value.items.map((item) => item.track).toList() ?? [];
+    final entries = tracks.isNotEmpty
+        ? [
+            for (final track in tracks)
+              StageArtwork(
+                id: track.id,
+                title: track.title,
+                subtitle: track.artists,
+                coverUrl: track.coverUrl,
+                actionLabel: t(
+                  track.id == playback.$1?.id
+                      ? 'player.open_player'
+                      : 'common.play',
                 ),
-              );
-            },
-          ),
-
-          SliverToBoxAdapter(
-            child: _GlassSectionHeader(
-              title: t('home.whatEveryonesOn'),
-              action: _windowToggle(t),
-            ),
-          ),
-          popular.when(
-            loading: () => const SliverToBoxAdapter(child: LoadingState()),
-            error: (err, _) => SliverToBoxAdapter(
-              child: ErrorState(
-                message: '',
-                onRetry: () => ref.invalidate(popularTracksProvider(_window)),
-              ),
-            ),
-            data: (data) {
-              if (data.items.isEmpty) {
-                return SliverToBoxAdapter(
-                  child: EmptyState(
-                    icon: Icons.local_fire_department_outlined,
-                    title: t('home.whatEveryonesOn'),
-                  ),
-                );
-              }
-              return SliverList.builder(
-                itemCount: data.items.length,
-                itemBuilder: (context, index) {
-                  final item = data.items[index];
-                  return _GlassTrackRow(
-                    track: item.track,
-                    queue: data.items.map((e) => e.track).toList(),
-                    context_: 'explore:popular',
-                    index: index,
-                  );
+                onActivate: () {
+                  if (track.id == playback.$1?.id) {
+                    context.push('/player');
+                  } else {
+                    controller.playTrack(
+                      track,
+                      queue: tracks,
+                      index: tracks.indexOf(track),
+                      context: 'home:stage',
+                    );
+                  }
                 },
-              );
-            },
+              ),
+          ]
+        : [
+            for (final mix in mixes.asData?.value.items ?? [])
+              StageArtwork(
+                id: mix.id,
+                title: mix.title,
+                subtitle: mix.description,
+                coverUrl: mix.cover?.url ?? '',
+                onActivate: mix.tracks.isEmpty
+                    ? null
+                    : () => controller.playTrack(
+                        mix.tracks.first,
+                        queue: mix.tracks,
+                        context: 'mix:${mix.id}',
+                        contextCover: mix.cover?.url,
+                      ),
+              ),
+          ];
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(inset, 20, inset, 12),
+            child: Row(
+              children: [
+                Text(
+                  'waveify',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -1,
+                  ),
+                ),
+                const Spacer(),
+                Flexible(
+                  child: Text(
+                    greeting,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
           ),
-
-          SliverToBoxAdapter(
-            child: _GlassSectionHeader(title: t('home.jumpBackIn')),
-          ),
-          recent.when(
-            loading: () => const SliverToBoxAdapter(child: LoadingState()),
-            error: (err, _) => SliverToBoxAdapter(
-              child: ErrorState(
-                message: '',
-                onRetry: () => ref.invalidate(recentlyPlayedProvider),
+        ),
+        SliverLayoutBuilder(
+          builder: (context, constraints) => SliverToBoxAdapter(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: (constraints.viewportMainAxisExtent - 76).clamp(
+                  0,
+                  double.infinity,
+                ),
+              ),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: entries.isEmpty
+                      ? mixes.isLoading || popular.isLoading
+                            ? const LoadingState()
+                            : EmptyState(
+                                icon: Icons.music_note_outlined,
+                                title: t('player.choose_track'),
+                                action: TextButton.icon(
+                                  onPressed: () => context.go('/search'),
+                                  icon: const Icon(Icons.search_rounded),
+                                  label: Text(t('common.sidebar.search')),
+                                ),
+                              )
+                      : ArtworkStage(
+                          key: ValueKey(
+                            entries.map((entry) => entry.id).join('|'),
+                          ),
+                          items: entries,
+                          initialIndex: playback.$3 < 0 ? 0 : playback.$3,
+                          actionLabel: t('common.play'),
+                        ),
+                ),
               ),
             ),
-            data: (data) {
-              if (data.items.isEmpty) return const SliverToBoxAdapter();
-              return SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 220,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spaceXl),
-                    itemCount: data.items.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: DesignTokens.spaceMd),
-                    itemBuilder: (context, index) {
-                      final track = data.items[index].track;
-                      return SizedBox(
-                        width: 260,
-                        child: _GlassCollectionCard(
-                          onTap: () => ref
-                              .read(playerControllerProvider.notifier)
-                              .playTrack(track, context: 'library:recent'),
-                          child: Row(
-                            children: [
-                              GlassCover(
-                                url: track.coverUrl,
-                                size: 56,
-                                borderRadius: DesignTokens.radiusMd,
-                                fit: BoxFit.cover,
-                              ),
-                              const SizedBox(width: DesignTokens.spaceMd),
-                              Expanded(
+          ),
+        ),
+        mixes.when(
+          loading: () => const SliverToBoxAdapter(),
+          error: (error, stack) => SliverToBoxAdapter(
+            child: ErrorState(
+              message: '',
+              onRetry: () => ref.invalidate(dailyMixesProvider),
+            ),
+          ),
+          data: (data) => data.items.isEmpty
+              ? const SliverToBoxAdapter()
+              : SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SectionTitle(
+                        title: t('home.dailyMixes'),
+                        subtitle: t('home.dailyMixesSubtitle'),
+                      ),
+                      SizedBox(
+                        height: 220,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: EdgeInsets.symmetric(horizontal: inset),
+                          itemCount: data.items.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 20),
+                          itemBuilder: (context, index) {
+                            final mix = data.items[index];
+                            return SizedBox(
+                              width: 148,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: mix.tracks.isEmpty
+                                    ? null
+                                    : () => controller.playTrack(
+                                        mix.tracks.first,
+                                        queue: mix.tracks,
+                                        context: 'mix:${mix.id}',
+                                        contextCover: mix.cover?.url,
+                                      ),
                                 child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      track.title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: DesignTokens.textBodyMedium.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: theme.colorScheme.onSurface,
-                                      ),
+                                    GlassCover(
+                                      url: mix.cover?.url ?? '',
+                                      size: 148,
                                     ),
-                                    const SizedBox(height: DesignTokens.spaceXs),
+                                    const SizedBox(height: 12),
                                     Text(
-                                      track.artists,
+                                      mix.title,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: DesignTokens.textBodySmall.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                      ),
+                                      style: theme.textTheme.titleSmall,
+                                    ),
+                                    Text(
+                                      mix.description,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall,
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
-                      );
-                    },
+                      ),
+                    ],
                   ),
                 ),
-              );
-            },
+        ),
+        SliverToBoxAdapter(
+          child: _SectionTitle(
+            title: t('home.whatEveryonesOn'),
+            action: SegmentedButton<String>(
+              style: SegmentedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: '24h', label: Text('24h')),
+                ButtonSegment(value: '7d', label: Text('7d')),
+                ButtonSegment(value: '30d', label: Text('30d')),
+                ButtonSegment(value: 'all', label: Text('∞')),
+              ],
+              selected: {_window},
+              onSelectionChanged: (values) =>
+                  setState(() => _window = values.first),
+            ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: DesignTokens.spaceXxxl)),
-        ],
-      ),
-    );
-  }
-
-  Widget _windowToggle(dynamic t) {
-    return SegmentedButton<String>(
-      style: ButtonStyle(
-        visualDensity: VisualDensity.compact,
-        textStyle: WidgetStatePropertyAll(
-          Theme.of(context).textTheme.labelSmall,
         ),
-        backgroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return Theme.of(context).colorScheme.primary.withValues(alpha: 0.15);
-          }
-          return Colors.transparent;
-        }),
-        foregroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return Theme.of(context).colorScheme.primary;
-          }
-          return Theme.of(context).colorScheme.onSurfaceVariant;
-        }),
-        side: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return BorderSide(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-            );
-          }
-          return BorderSide(
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-          );
-        }),
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radiusMd)),
+        popular.when(
+          loading: () => const SliverToBoxAdapter(child: LoadingState()),
+          error: (error, stack) => SliverToBoxAdapter(
+            child: ErrorState(
+              message: '',
+              onRetry: () => ref.invalidate(popularTracksProvider(_window)),
+            ),
+          ),
+          data: (data) => data.items.isEmpty
+              ? SliverToBoxAdapter(
+                  child: EmptyState(
+                    icon: Icons.music_note_outlined,
+                    title: t('player.choose_track'),
+                    action: TextButton.icon(
+                      onPressed: () => context.go('/search'),
+                      icon: const Icon(Icons.search_rounded),
+                      label: Text(t('common.sidebar.search')),
+                    ),
+                  ),
+                )
+              : SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: inset),
+                  sliver: SliverList.builder(
+                    itemCount: data.items.length,
+                    itemBuilder: (context, index) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: TrackRow(
+                        track: data.items[index].track,
+                        queue: data.items.map((e) => e.track).toList(),
+                        context_: 'explore:popular',
+                        index: index,
+                      ),
+                    ),
+                  ),
+                ),
         ),
-      ),
-      segments: [
-        ButtonSegment(value: '24h', label: const Text('24h')),
-        ButtonSegment(value: '7d', label: const Text('7d')),
-        ButtonSegment(value: '30d', label: const Text('30d')),
-        ButtonSegment(value: 'all', label: const Text('All')),
+        recent.when(
+          loading: () => const SliverToBoxAdapter(),
+          error: (error, stack) => SliverToBoxAdapter(
+            child: ErrorState(
+              message: '',
+              onRetry: () => ref.invalidate(recentlyPlayedProvider),
+            ),
+          ),
+          data: (data) => data.items.isEmpty
+              ? const SliverToBoxAdapter()
+              : SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SectionTitle(title: t('home.jumpBackIn')),
+                      SizedBox(
+                        height: 210,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: EdgeInsets.symmetric(horizontal: inset),
+                          itemCount: data.items.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 16),
+                          itemBuilder: (context, index) {
+                            final track = data.items[index].track;
+                            return SizedBox(
+                              width: 144,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () => ref
+                                    .read(playerControllerProvider.notifier)
+                                    .playTrack(
+                                      track,
+                                      context: 'library:recent',
+                                    ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    GlassCover(url: track.coverUrl, size: 144),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      track.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.titleSmall,
+                                    ),
+                                    Text(
+                                      track.artists,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 32)),
       ],
-      selected: {_window},
-      onSelectionChanged: (value) => setState(() => _window = value.first),
     );
   }
 }
 
-class _GlassSectionHeader extends StatelessWidget {
-  const _GlassSectionHeader({
-    required this.title,
-    this.subtitle,
-    this.action,
-  });
-
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title, this.subtitle, this.action});
   final String title;
   final String? subtitle;
   final Widget? action;
-
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(DesignTokens.spaceXxl, DesignTokens.spaceXxl, DesignTokens.spaceXxl, DesignTokens.spaceMd),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: DesignTokens.textHeadlineSmall.copyWith(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: DesignTokens.spaceXxs),
-                  Text(
-                    subtitle!,
-                    style: DesignTokens.textBodySmall.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (action != null) action!,
-        ],
-      ),
-    );
-  }
-}
-
-class _GlassMixCard extends StatelessWidget {
-  const _GlassMixCard({
-    required this.title,
-    required this.subtitle,
-    required this.coverUrl,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final String coverUrl;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SizedBox(
-      width: 180,
-      child: GlassCard(
-        onTap: onTap,
-        padding: EdgeInsets.zero,
-        child: Column(
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+    child: Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 20,
+      runSpacing: 12,
+      children: [
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GlassCover(
-              url: coverUrl,
-              width: 180,
-              height: 180,
-              borderRadius: DesignTokens.radiusLg,
-              fit: BoxFit.cover,
-              showGlow: true,
-              accentColor: theme.colorScheme.primary,
-            ),
-            Padding(
-              padding: const EdgeInsets.all(DesignTokens.spaceMd),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: DesignTokens.textTitleMedium.copyWith(
-                      color: theme.colorScheme.onSurface,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: DesignTokens.spaceXxs),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: DesignTokens.textBodySmall.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            Text(title, style: Theme.of(context).textTheme.headlineSmall),
+            if (subtitle != null)
+              Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _GlassCollectionCard extends StatelessWidget {
-  const _GlassCollectionCard({
-    required this.child,
-    required this.onTap,
-  });
-
-  final Widget child;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(DesignTokens.spaceMd),
-      child: child,
-    );
-  }
-}
-
-class _GlassTrackRow extends StatelessWidget {
-  const _GlassTrackRow({
-    required this.track,
-    required this.queue,
-    required this.context_,
-    required this.index,
-  });
-
-  final Track track;
-  final List<Track> queue;
-  final String context_;
-  final int index;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return GlassCard(
-      padding: const EdgeInsets.symmetric(
-        horizontal: DesignTokens.spaceMd,
-        vertical: DesignTokens.spaceSm,
-      ),
-      onTap: () => ref
-          .read(playerControllerProvider.notifier)
-          .playTrack(
-            track,
-            queue: queue,
-            context: context_,
-            index: index,
-          ),
-      child: Row(
-        children: [
-          CoverImage(
-            url: track.coverUrl,
-            size: 44,
-            borderRadius: DesignTokens.radiusSm,
-          ),
-          const SizedBox(width: DesignTokens.spaceMd),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  track.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: DesignTokens.textBodyMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: DesignTokens.spaceXxs),
-                Text(
-                  track.artists,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: DesignTokens.textBodySmall.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          GlassIconButton(
-            icon: Icons.play_arrow_rounded,
-            onPressed: () => ref
-                .read(playerControllerProvider.notifier)
-                .playTrack(
-                  track,
-                  queue: queue,
-                  context: context_,
-                  index: index,
-                ),
-            size: 36,
-            iconSize: 20,
-            variant: GlassButtonVariant.ghost,
-          ),
-        ],
-      ),
-    );
-  }
+        ?action,
+      ],
+    ),
+  );
 }

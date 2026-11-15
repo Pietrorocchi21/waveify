@@ -148,10 +148,7 @@ class LibraryController extends Notifier<LibraryState> {
     state = state.copyWith(isLoadingPlaylists: true);
     try {
       final playlists = await ref.read(apiProvider).listPlaylists();
-      state = state.copyWith(
-        playlists: playlists,
-        isLoadingPlaylists: false,
-      );
+      state = state.copyWith(playlists: playlists, isLoadingPlaylists: false);
     } catch (err) {
       state = state.copyWith(isLoadingPlaylists: false, error: '$err');
     }
@@ -168,7 +165,9 @@ class LibraryController extends Notifier<LibraryState> {
     } catch (err) {
       if (!wasLiked) {
         state = state.copyWith(
-          likedTracks: state.likedTracks.where((t) => t.id != track.id).toList(),
+          likedTracks: state.likedTracks
+              .where((t) => t.id != track.id)
+              .toList(),
         );
       }
       state = state.copyWith(error: '$err');
@@ -224,7 +223,9 @@ class LibraryController extends Notifier<LibraryState> {
     bool isPublic = false,
   }) async {
     try {
-      final playlist = await ref.read(apiProvider).createPlaylist(
+      final playlist = await ref
+          .read(apiProvider)
+          .createPlaylist(
             title: title,
             description: description,
             isPublic: isPublic,
@@ -256,10 +257,7 @@ class LibraryController extends Notifier<LibraryState> {
   ///
   /// The bulk endpoint is used, so the whole batch costs one request.
   /// Returns the number of tracks that were added.
-  Future<int> addTracksToPlaylist(
-    String playlistId,
-    List<Track> tracks,
-  ) async {
+  Future<int> addTracksToPlaylist(String playlistId, List<Track> tracks) async {
     if (tracks.isEmpty) return 0;
     try {
       final result = await ref
@@ -273,10 +271,7 @@ class LibraryController extends Notifier<LibraryState> {
   }
 
   /// Removes a track from one of the user's playlists.
-  Future<bool> removeTrackFromPlaylist(
-    String playlistId,
-    String itemId,
-  ) async {
+  Future<bool> removeTrackFromPlaylist(String playlistId, String itemId) async {
     try {
       await ref.read(apiProvider).removePlaylistItem(playlistId, itemId);
       return true;
@@ -292,8 +287,10 @@ class LibraryController extends Notifier<LibraryState> {
     state = state.copyWith(
       playlists: [
         for (final playlist in previous)
-          if (playlist.id == playlistId) playlist.copyWith(title: title)
-          else playlist,
+          if (playlist.id == playlistId)
+            playlist.copyWith(title: title)
+          else
+            playlist,
       ],
     );
     try {

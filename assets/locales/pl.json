@@ -216,6 +216,16 @@
     "dailyMixesSubtitle": "Świeże playlisty tworzone wokół twoich ulubionych wykonawców i gatunków"
   },
   "library": {
+    "import_audio": "Importuj pliki audio",
+    "files_imported": "Zaimportowano pliki: {count}",
+    "on_device": "Na tym urządzeniu",
+    "local_empty": "Brak plików audio na tym urządzeniu",
+    "local_hint": "Zaimportuj pliki audio, aby zacząć słuchać.",
+    "cloud": "Chmura",
+    "cloud_empty": "Brak plików audio w bibliotece w chmurze",
+    "upload_cloud": "Prześlij do chmury",
+    "uploaded_cloud": "Przesłano do chmury",
+    "your_music": "Twoja muzyka",
     "title": "Biblioteka",
     "liked_songs": "Polubione utwory",
     "song": "utwór",
@@ -247,6 +257,7 @@
     "remove_from_liked": "Usuń z ulubionych"
   },
   "login": {
+    "continue_local": "Kontynuuj bez konta",
     "welcome_back": "Witaj ponownie",
     "sign_in_to_account": "Zaloguj się na swoje konto",
     "auth_title_login": "Twoja muzyka, po twojemu",
@@ -358,6 +369,7 @@
     "repeat_off": "Powtarzanie: wył.",
     "repeat_all": "Powtarzanie: wszystko",
     "repeat_one": "Powtarzanie: utwór",
+    "open_player": "Otwórz odtwarzacz",
     "nothing_playing": "Nic nie jest odtwarzane",
     "choose_track": "Wybierz utwór w wyszukiwarce",
     "queue": "Kolejka",
@@ -442,6 +454,9 @@
     "type_to_search": "Zacznij pisać, aby wyszukać"
   },
   "settings": {
+    "updater": {
+      "unsupported": "Automatyczne aktualizacje nie są obsługiwane na tej platformie."
+    },
     "title": "Ustawienia",
     "search_placeholder": "Szukaj w ustawieniach...",
     "subtitle": "Zarządzaj swoimi preferencjami",

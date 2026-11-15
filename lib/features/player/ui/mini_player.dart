@@ -1,18 +1,20 @@
+import 'package:waveify/core/theme/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/storage/app_settings.dart';
 import '../../../shared/widgets/common.dart';
+import '../../../shared/widgets/track_widgets.dart';
 import '../../../shared/widgets/glass.dart';
-import '../../customization/customization_controller.dart';
 import '../player_controller.dart';
 import '../player_state.dart';
 
 class MiniPlayer extends ConsumerWidget {
-  const MiniPlayer({super.key, this.onOpen});
+  const MiniPlayer({super.key, this.onOpen, this.fullControls = false});
 
   final VoidCallback? onOpen;
+  final bool fullControls;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,54 +30,35 @@ class MiniPlayer extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
+    final state = ref.watch(playerControllerProvider);
+    final wide = MediaQuery.sizeOf(context).width >= 900;
     final isPlaying = status == PlayerStatus.playing;
-    final progress = ref.watch(
-      playerControllerProvider.select((s) => s.progress),
-    );
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Progress bar
-        Container(
-          height: 3,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(1.5),
-          ),
-          child: FractionallySizedBox(
-            alignment: Alignment.centerLeft,
-            widthFactor: progress.clamp(0.0, 1.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-                borderRadius: BorderRadius.circular(1.5),
-              ),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spaceMd, vertical: DesignTokens.spaceSm),
-          child: Row(
-            children: [
-              // Cover art - larger and more prominent
-              Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(DesignTokens.radiusSm),
-                child: InkWell(
-                  onTap: onOpen,
-                  borderRadius: BorderRadius.circular(DesignTokens.radiusSm),
-                  child: GlassCover(
-                    url: track.coverUrl,
-                    size: 56,
-                    borderRadius: DesignTokens.radiusSm,
-                    fit: BoxFit.cover,
-                  ),
+        Row(
+          children: [
+            Tooltip(
+              message: t('player.playing_from'),
+              child: InkWell(
+                onTap: onOpen,
+                borderRadius: BorderRadius.circular(12),
+                child: GlassCover(
+                  url: track.coverUrl,
+                  size: wide ? 48 : 44,
+                  borderRadius: 12,
                 ),
               ),
-              const SizedBox(width: DesignTokens.spaceMd),
-              // Track info
-              Expanded(
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextButton(
+                onPressed: onOpen,
+                style: TextButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  padding: EdgeInsets.zero,
+                  foregroundColor: theme.colorScheme.onSurface,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -84,62 +67,99 @@ class MiniPlayer extends ConsumerWidget {
                       track.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        height: 1.3,
-                      ),
+                      style: theme.textTheme.titleSmall,
                     ),
-                    const SizedBox(height: 2),
                     Text(
-                      track.artists,
+                      state.error != null ? state.error! : track.artists,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
+                      style: theme.textTheme.bodySmall,
                     ),
                   ],
                 ),
               ),
-              // Controls - using glass icon buttons
+            ),
+            if (wide) const ShuffleButton(),
+            if (wide || fullControls) ...[
               GlassIconButton(
                 icon: Icons.skip_previous_rounded,
                 onPressed: controller.skipPrevious,
                 tooltip: t('player.previous'),
-                size: 36,
-                iconSize: 20,
-                variant: GlassButtonVariant.ghost,
               ),
-              const SizedBox(width: DesignTokens.spaceXs),
+            ],
+            if (state.isBusy)
+              const SizedBox(
+                width: 48,
+                height: 48,
+                child: Padding(
+                  padding: EdgeInsets.all(14),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            else
               GlassIconButton(
-                icon: isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                icon: isPlaying
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded,
                 onPressed: controller.togglePlayPause,
                 tooltip: isPlaying ? t('common.pause') : t('common.play'),
-                size: 44,
-                iconSize: 22,
                 variant: GlassButtonVariant.primary,
+                iconSize: 28,
               ),
-              const SizedBox(width: DesignTokens.spaceXs),
-              GlassIconButton(
-                icon: Icons.skip_next_rounded,
-                onPressed: controller.skipNext,
-                tooltip: t('player.next'),
-                size: 36,
-                iconSize: 20,
-                variant: GlassButtonVariant.ghost,
+            GlassIconButton(
+              icon: Icons.skip_next_rounded,
+              onPressed: controller.skipNext,
+              tooltip: t('player.next'),
+            ),
+            if (wide) ...[
+              const RepeatButton(),
+              const SizedBox(width: 12),
+              const Icon(Icons.volume_up_outlined, size: 18),
+              SizedBox(
+                width: 96,
+                child: Slider(
+                  value: state.volume.clamp(0, 1),
+                  label: '${(state.volume * 100).round()}%',
+                  onChanged: controller.setVolume,
+                ),
               ),
-              const SizedBox(width: DesignTokens.spaceXs),
+            ],
+            if (wide || MediaQuery.sizeOf(context).width >= 380)
               GlassIconButton(
                 icon: Icons.queue_music_rounded,
                 onPressed: () => showQueueSheet(context, ref),
                 tooltip: t('player.queue'),
-                size: 36,
-                iconSize: 20,
-                variant: GlassButtonVariant.ghost,
               ),
+          ],
+        ),
+        SizedBox(
+          height: 18,
+          child: Row(
+            children: [
+              if (wide)
+                Text(
+                  formatDuration(state.position.inMilliseconds),
+                  style: theme.textTheme.labelSmall,
+                ),
+              Expanded(
+                child: Slider(
+                  value: state.progress,
+                  label: formatDuration(state.position.inMilliseconds),
+                  onChanged: state.duration > Duration.zero
+                      ? (value) => controller.seek(
+                          Duration(
+                            milliseconds:
+                                (state.duration.inMilliseconds * value).round(),
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+              if (wide)
+                Text(
+                  formatDuration(state.duration.inMilliseconds),
+                  style: theme.textTheme.labelSmall,
+                ),
             ],
           ),
         ),
@@ -184,7 +204,12 @@ class _QueueSheet extends ConsumerWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(DesignTokens.spaceXxl, 16, DesignTokens.spaceLg, 8),
+            padding: const EdgeInsets.fromLTRB(
+              DesignTokens.spaceXxl,
+              16,
+              DesignTokens.spaceLg,
+              8,
+            ),
             child: Row(
               children: [
                 Expanded(
@@ -215,23 +240,20 @@ class _QueueSheet extends ConsumerWidget {
                   )
                 : ReorderableListView.builder(
                     itemCount: queue.length,
-                    onReorder: (oldIndex, newIndex) {
-                      final target = newIndex > oldIndex
-                          ? newIndex - 1
-                          : newIndex;
-                      controller.reorderQueue(oldIndex, target);
-                    },
+                    onReorderItem: controller.reorderQueue,
                     proxyDecorator: (child, index, animation) => Material(
                       color: theme.colorScheme.surfaceContainerHighest,
                       elevation: 6,
-                      borderRadius: BorderRadius.circular(DesignTokens.radiusMd),
+                      borderRadius: BorderRadius.circular(
+                        DesignTokens.radiusMd,
+                      ),
                       child: child,
                     ),
                     itemBuilder: (context, index) {
                       final track = queue[index];
                       final isCurrent = index == currentIndex;
                       return GlassCard(
-                        key: ValueKey('_'),
+                        key: ValueKey('${track.id}-$index'),
                         padding: const EdgeInsets.symmetric(
                           horizontal: DesignTokens.spaceMd,
                           vertical: DesignTokens.spaceSm,
@@ -264,7 +286,9 @@ class _QueueSheet extends ConsumerWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      color: isCurrent ? theme.colorScheme.primary : null,
+                                      color: isCurrent
+                                          ? theme.colorScheme.primary
+                                          : null,
                                       fontWeight: isCurrent
                                           ? FontWeight.w700
                                           : FontWeight.w500,
@@ -289,7 +313,8 @@ class _QueueSheet extends ConsumerWidget {
                               child: Icon(
                                 Icons.drag_handle_rounded,
                                 size: 20,
-                                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                                color: theme.colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.5),
                               ),
                             ),
                           ],
@@ -309,15 +334,20 @@ class RepeatButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final t = ref.watch(translatorProvider);
     final repeat = ref.watch(playerControllerProvider.select((s) => s.repeat));
     final controller = ref.read(playerControllerProvider.notifier);
 
     final (icon, tooltip) = switch (repeat) {
       PlaybackRepeatMode.off => (Icons.repeat_rounded, t('player.repeat_off')),
-      PlaybackRepeatMode.all => (Icons.repeat_on_rounded, t('player.repeat_all')),
-      PlaybackRepeatMode.one => (Icons.repeat_one_on_rounded, t('player.repeat_one')),
+      PlaybackRepeatMode.all => (
+        Icons.repeat_on_rounded,
+        t('player.repeat_all'),
+      ),
+      PlaybackRepeatMode.one => (
+        Icons.repeat_one_on_rounded,
+        t('player.repeat_one'),
+      ),
     };
 
     return GlassIconButton(
@@ -345,7 +375,6 @@ class ShuffleButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final t = ref.watch(translatorProvider);
     final shuffle = ref.watch(
       playerControllerProvider.select((s) => s.shuffle),
@@ -358,7 +387,9 @@ class ShuffleButton extends ConsumerWidget {
       tooltip: shuffle ? t('player.shuffle_on') : t('player.shuffle_off'),
       size: 36,
       iconSize: 20,
-      variant: shuffle ? GlassButtonVariant.secondary : GlassButtonVariant.ghost,
+      variant: shuffle
+          ? GlassButtonVariant.secondary
+          : GlassButtonVariant.ghost,
     );
   }
 }

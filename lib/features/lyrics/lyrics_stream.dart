@@ -26,7 +26,10 @@ class LyricsStream {
     CancelToken? cancelToken,
   }) async* {
     final query = <String, dynamic>{};
-    if (title != null && title.trim().isNotEmpty && artist != null && artist.trim().isNotEmpty) {
+    if (title != null &&
+        title.trim().isNotEmpty &&
+        artist != null &&
+        artist.trim().isNotEmpty) {
       query['title'] = title.trim();
       query['artist'] = artist.trim();
       if (durationMs != null && durationMs > 0) {
@@ -41,11 +44,11 @@ class LyricsStream {
     );
 
     final buffer = StringBuffer();
-    final utf8 = const Utf8Decoder(allowMalformed: true);
-
-    await for (final chunk in body.stream) {
-      buffer.write(utf8.convert(chunk));
-      var text = buffer.toString();
+    await for (final chunk in body.stream.cast<List<int>>().transform(
+      const Utf8Decoder(allowMalformed: true),
+    )) {
+      buffer.write(chunk);
+      var text = buffer.toString().replaceAll('\r\n', '\n');
 
       while (true) {
         final separator = text.indexOf('\n\n');

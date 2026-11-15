@@ -212,6 +212,16 @@
     "dailyMixesSubtitle": "Frische Playlists rund um deine Lieblingskünstler und Lieblingsgenres"
   },
   "library": {
+    "import_audio": "Audio importieren",
+    "files_imported": "{count} Dateien importiert",
+    "on_device": "Auf diesem Gerät",
+    "local_empty": "Keine Audiodateien auf diesem Gerät",
+    "local_hint": "Importiere Audiodateien, um Musik zu hören.",
+    "cloud": "Cloud",
+    "cloud_empty": "Keine Audiodateien in deiner Cloud-Mediathek",
+    "upload_cloud": "In die Cloud hochladen",
+    "uploaded_cloud": "In die Cloud hochgeladen",
+    "your_music": "Deine Musik",
     "title": "Mediathek",
     "liked_songs": "Lieblingstitel",
     "song": "Titel",
@@ -243,6 +253,7 @@
     "remove_from_liked": "Aus Lieblingssongs entfernen"
   },
   "login": {
+    "continue_local": "Ohne Konto fortfahren",
     "welcome_back": "Willkommen zurück!",
     "sign_in_to_account": "Melde dich bei deinem Konto an",
     "auth_title_login": "Deine Musik, auf deine Art",
@@ -354,6 +365,7 @@
     "repeat_off": "Wiederholung: aus",
     "repeat_all": "Wiederholung: alle",
     "repeat_one": "Wiederholung: Titel",
+    "open_player": "Player öffnen",
     "nothing_playing": "Keine Wiedergabe",
     "choose_track": "Wähle in der Suche einen Titel aus",
     "queue": "Warteschlange",
@@ -441,6 +453,9 @@
     "type_to_search": "Gib einen Suchbegriff ein"
   },
   "settings": {
+    "updater": {
+      "unsupported": "Automatische Updates werden auf dieser Plattform nicht unterstützt."
+    },
     "title": "Einstellungen",
     "search_placeholder": "Einstellungen durchsuchen…",
     "subtitle": "Verwalte deine Präferenzen",
