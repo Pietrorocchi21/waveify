@@ -94,6 +94,7 @@ Future<void> main(List<String> args) async {
         jsonEncode({
           'status': 'passed',
           'first_frame': 'rendered',
+          'window_fits_work_area': await WindowService.instance.fitsWorkArea(),
           'authenticated': container
               .read(authControllerProvider)
               .isAuthenticated,

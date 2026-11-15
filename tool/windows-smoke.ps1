@@ -31,6 +31,8 @@ try {
         if ($process.HasExited) { throw 'Application exited before rendering its first frame' }
     }
     if (-not (Test-Path $frameReport)) { throw 'Flutter did not render the application within 30 seconds' }
+    $frame = Get-Content $frameReport -Raw | ConvertFrom-Json
+    if ($frame.window_fits_work_area -ne $true) { throw 'Application window extends beyond the screen work area' }
     Start-Sleep -Seconds 5
     $process.Refresh()
     if ($process.HasExited) { throw 'Application exited after creating its main window' }

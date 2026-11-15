@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 
 import '../theme/app_theme.dart';
 
@@ -17,7 +19,7 @@ class WindowService {
   bool _isMaximized = false;
 
   static const Size initialSize = Size(1200, 780);
-  static const Size minimumSize = Size(1100, 705);
+  static const Size minimumSize = Size(400, 560);
 
   static const Size overlaySize = Size(420, 88);
 
@@ -36,12 +38,13 @@ class WindowService {
     await _safe(() => windowManager.unmaximize());
     await _safe(() => windowManager.setMinimumSize(Size.zero));
     await _safe(() => windowManager.setMaximumSize(_noLimit));
-    await _safe(() => windowManager.setBounds(_overlayBounds(alignment)));
+    await _safe(
+      () async => windowManager.setBounds(await _overlayBounds(alignment)),
+    );
     await _safe(() => windowManager.setMinimumSize(overlaySize));
     await _safe(() => windowManager.setMaximumSize(overlaySize));
     await _safe(() => windowManager.setAlwaysOnTop(true));
     await _safe(() => windowManager.setSkipTaskbar(true));
-    await _safe(() => windowManager.setAlignment(alignment));
   }
 
   Future<void> exitOverlayMode() async {
@@ -53,43 +56,71 @@ class WindowService {
     await _safe(() => windowManager.setResizable(true));
     await _safe(() => windowManager.setMinimumSize(Size.zero));
     await _safe(() => windowManager.setMaximumSize(_noLimit));
-    await _safe(() => windowManager.setBounds(_normalBounds()));
+    await _safe(() async => windowManager.setBounds(await _normalBounds()));
     await _safe(() => windowManager.setMinimumSize(minimumSize));
     await _safe(() => windowManager.center());
   }
 
-  Rect _overlayBounds(Alignment alignment) {
-    final view = PlatformDispatcher.instance.views.first;
-    final screen = Size(
-      view.physicalSize.width / view.devicePixelRatio,
-      view.physicalSize.height / view.devicePixelRatio,
-    );
-
-    const margin = 16.0;
-    final left = alignment.x < 0
-        ? screen.width - overlaySize.width - margin
-        : alignment.x == 0
-        ? (screen.width - overlaySize.width) / 2
-        : margin;
-    final top = alignment.y < 0
-        ? screen.height - overlaySize.height - margin
-        : margin;
-
-    return Rect.fromLTWH(left, top, overlaySize.width, overlaySize.height);
+  Future<Rect> _workArea() async {
+    try {
+      final display = await screenRetriever.getPrimaryDisplay().timeout(
+        const Duration(seconds: 2),
+      );
+      return (display.visiblePosition ?? Offset.zero) &
+          (display.visibleSize ?? display.size);
+    } catch (_) {
+      final view = PlatformDispatcher.instance.views.first;
+      return Offset.zero &
+          Size(
+            view.physicalSize.width / view.devicePixelRatio,
+            view.physicalSize.height / view.devicePixelRatio,
+          );
+    }
   }
 
-  Rect _normalBounds() {
-    final view = PlatformDispatcher.instance.views.first;
-    final screen = Size(
-      view.physicalSize.width / view.devicePixelRatio,
-      view.physicalSize.height / view.devicePixelRatio,
+  Future<Rect> _overlayBounds(Alignment alignment) async {
+    final work = await _workArea();
+    const margin = 16.0;
+    return Rect.fromLTWH(
+      work.left +
+          margin +
+          math.max(0, work.width - overlaySize.width - margin * 2) *
+              (alignment.x + 1) /
+              2,
+      work.top +
+          margin +
+          math.max(0, work.height - overlaySize.height - margin * 2) *
+              (alignment.y + 1) /
+              2,
+      overlaySize.width,
+      overlaySize.height,
+    );
+  }
+
+  Future<Rect> _normalBounds() async {
+    final work = await _workArea();
+    final width = math.min(initialSize.width, math.max(320.0, work.width - 32));
+    final height = math.min(
+      initialSize.height,
+      math.max(320.0, work.height - 32),
     );
     return Rect.fromLTWH(
-      ((screen.width - initialSize.width) / 2).clamp(0, double.infinity),
-      ((screen.height - initialSize.height) / 2).clamp(0, double.infinity),
-      initialSize.width,
-      initialSize.height,
+      work.left + (work.width - width) / 2,
+      work.top + (work.height - height) / 2,
+      width,
+      height,
     );
+  }
+
+  Future<bool> fitsWorkArea() async {
+    if (!isDesktop) return true;
+    final work = await _workArea();
+    final bounds = await windowManager.getBounds();
+    const tolerance = 2.0;
+    return bounds.left >= work.left - tolerance &&
+        bounds.top >= work.top - tolerance &&
+        bounds.right <= work.right + tolerance &&
+        bounds.bottom <= work.bottom + tolerance;
   }
 
   Future<void> _safe(Future<void> Function() operation) async {
@@ -109,9 +140,13 @@ class WindowService {
 
     await windowManager.ensureInitialized();
 
-    const options = WindowOptions(
-      size: initialSize,
-      minimumSize: minimumSize,
+    final bounds = await _normalBounds();
+    final options = WindowOptions(
+      size: bounds.size,
+      minimumSize: Size(
+        math.min(minimumSize.width, bounds.width),
+        math.min(minimumSize.height, bounds.height),
+      ),
       center: true,
       titleBarStyle: TitleBarStyle.hidden,
       windowButtonVisibility: false,
