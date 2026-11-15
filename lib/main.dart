@@ -1,4 +1,5 @@
-import 'dart:io' show Platform, exit;
+import 'dart:io' show File, Platform, exit;
+import 'dart:convert';
 
 import 'core/diagnostics/native_self_test.dart';
 
@@ -81,6 +82,26 @@ Future<void> main(List<String> args) async {
 
   // The deep links (waveify://) are listened to as soon as the app starts.
   await container.read(deepLinkServiceProvider).start();
+
+  final startupOutput = args
+      .where((arg) => arg.startsWith('--startup-report='))
+      .firstOrNull;
+  if (startupOutput != null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final file = File(startupOutput.substring('--startup-report='.length));
+      await file.parent.create(recursive: true);
+      await file.writeAsString(
+        jsonEncode({
+          'status': 'passed',
+          'first_frame': 'rendered',
+          'authenticated': container
+              .read(authControllerProvider)
+              .isAuthenticated,
+        }),
+        flush: true,
+      );
+    });
+  }
 
   runApp(
     UncontrolledProviderScope(container: container, child: const WaveifyApp()),

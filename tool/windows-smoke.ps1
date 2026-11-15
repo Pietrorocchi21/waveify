@@ -15,7 +15,9 @@ try {
     if (-not (Test-Path $report)) { throw 'Native self-test did not write its JSON report' }
     $result = Get-Content $report -Raw | ConvertFrom-Json
     if ($result.status -ne 'passed') { throw "Native self-test did not pass: $(Get-Content $report -Raw)" }
-    $process = Start-Process -FilePath $exe -PassThru
+    $frameReport = Join-Path $output 'first-frame.json'
+    Remove-Item $frameReport -ErrorAction SilentlyContinue
+    $process = Start-Process -FilePath $exe -ArgumentList "--startup-report=$frameReport" -PassThru
     $deadline = (Get-Date).AddSeconds(30)
     do {
         Start-Sleep -Milliseconds 500
@@ -23,6 +25,12 @@ try {
         if ($process.HasExited) { throw "Application exited during startup: $($process.ExitCode)" }
     } while ($process.MainWindowHandle -eq 0 -and (Get-Date) -lt $deadline)
     if ($process.MainWindowHandle -eq 0) { throw 'Application did not create a visible main window' }
+    while (-not (Test-Path $frameReport) -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 500
+        $process.Refresh()
+        if ($process.HasExited) { throw 'Application exited before rendering its first frame' }
+    }
+    if (-not (Test-Path $frameReport)) { throw 'Flutter did not render the application within 30 seconds' }
     Start-Sleep -Seconds 5
     $process.Refresh()
     if ($process.HasExited) { throw 'Application exited after creating its main window' }
