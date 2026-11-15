@@ -94,7 +94,7 @@ class AppShell extends ConsumerWidget {
     }
     final main = Column(
       children: [
-        if (wide)
+        if (wide || WindowService.instance.isDesktop)
           const SizedBox(
             height: 32,
             child: WindowDragArea(
