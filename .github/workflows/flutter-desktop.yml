@@ -124,17 +124,6 @@ jobs:
         shell: pwsh
         run: ./tool/windows-smoke.ps1
 
-      - name: Upload Windows diagnostics
-        if: always() && matrix.target == 'windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: Waveify-windows-diagnostics
-          path: |
-            build/windows-smoke/
-            build/windows/x64/CMakeFiles/CMakeConfigureLog.yaml
-          if-no-files-found: warn
-          retention-days: 30
-
       - name: Generate Windows installer and portable archive
         if: matrix.target == 'windows'
         shell: pwsh
@@ -146,6 +135,34 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Installer compiler failed: $LASTEXITCODE" }
           Copy-Item build\windows\installer\Waveify-Setup.exe 'build/Waveify-${{ steps.version.outputs.version }}-windows.exe'
           Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath 'build/Waveify-${{ steps.version.outputs.version }}-windows-portable.zip'
+
+      - name: Verify installed Windows application
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $setup = (Resolve-Path build/windows/installer/Waveify-Setup.exe).Path
+          $installPath = Join-Path $env:RUNNER_TEMP 'Waveify-installed'
+          $install = Start-Process $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$installPath" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Installer exited with $($install.ExitCode)" }
+          try {
+            ./tool/windows-smoke.ps1 -Executable (Join-Path $installPath 'waveify.exe') -OutputDirectory build/windows-smoke/installed
+          } finally {
+            $uninstall = Join-Path $installPath 'unins000.exe'
+            if (Test-Path $uninstall) {
+              Start-Process $uninstall -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait
+            }
+          }
+
+      - name: Upload Windows diagnostics
+        if: always() && matrix.target == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Waveify-windows-diagnostics
+          path: |
+            build/windows-smoke/
+            build/windows/x64/CMakeFiles/CMakeConfigureLog.yaml
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Package Linux app
         if: matrix.target == 'linux'
