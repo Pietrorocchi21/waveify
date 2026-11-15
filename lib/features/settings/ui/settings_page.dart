@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/platform/discord_service.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/platform/updater_service.dart';
@@ -35,11 +39,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     setState(() {
       _checking = false;
       _updateMessage = switch (result.state) {
-        UpdateState.available => result.version == null
-            ? t('settings.updater.available')
-            : t('settings.updater.available_version', {'version': result.version!}),
+        UpdateState.available =>
+          result.version == null
+              ? t('settings.updater.available')
+              : t('settings.updater.available_version', {
+                  'version': result.version!,
+                }),
         UpdateState.upToDate => t('settings.updater.up_to_date'),
-        UpdateState.error => '${t('settings.updater.error')} ${result.error ?? ''}',
+        UpdateState.error =>
+          '${t('settings.updater.error')} ${result.error ?? ''}',
         _ => null,
       };
     });
@@ -110,10 +118,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   underline: const SizedBox.shrink(),
                   items: [
                     for (final variant in AccentVariant.values)
-                      DropdownMenuItem(
-                        value: variant,
-                        child: Text(variant.id),
-                      ),
+                      DropdownMenuItem(value: variant, child: Text(variant.id)),
                   ],
                   onChanged: (variant) {
                     if (variant != null) controller.setAccent(variant);
@@ -169,7 +174,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   '${settings.pitchSemitones.toStringAsFixed(1)} st',
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => Navigator.of(context).pushNamed('/player'),
+                onTap: () => context.push('/player'),
               ),
             ],
           ),
@@ -184,29 +189,42 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               SwitchListTile(
                 value: settings.discordEnabled,
                 title: Text(t('settings.tabs.discord')),
-                subtitle: Text(t('settings.discord.desc')),
-                onChanged: (value) =>
-                    controller.setDiscordEnabled(value),
+                subtitle: Text(
+                  t(
+                    DiscordService.instance.isSupported
+                        ? 'settings.discord.desc'
+                        : 'settings.discord.unsupported',
+                  ),
+                ),
+                onChanged: DiscordService.instance.isSupported
+                    ? (value) => controller.setDiscordEnabled(value)
+                    : null,
               ),
               const Divider(height: 1),
               SwitchListTile(
                 value: settings.discordShowArtwork,
                 title: Text(t('settings.discord.show_artwork')),
-                onChanged: settings.discordEnabled
+                onChanged:
+                    settings.discordEnabled &&
+                        DiscordService.instance.isSupported
                     ? (value) => controller.setDiscordShowArtwork(value)
                     : null,
               ),
               SwitchListTile(
                 value: settings.discordShowArtistImage,
                 title: Text(t('settings.discord.show_artist_image')),
-                onChanged: settings.discordEnabled
+                onChanged:
+                    settings.discordEnabled &&
+                        DiscordService.instance.isSupported
                     ? (value) => controller.setDiscordShowArtistImage(value)
                     : null,
               ),
               SwitchListTile(
                 value: settings.discordShowTime,
                 title: Text(t('settings.discord.show_time')),
-                onChanged: settings.discordEnabled
+                onChanged:
+                    settings.discordEnabled &&
+                        DiscordService.instance.isSupported
                     ? (value) => controller.setDiscordShowTime(value)
                     : null,
               ),
@@ -269,10 +287,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 onTap: () async {
                   await ref.read(authControllerProvider.notifier).logout();
                   if (context.mounted) {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/login',
-                      (route) => false,
-                    );
+                    context.go('/login');
                   }
                 },
               ),
@@ -366,9 +381,8 @@ class _OverlaySettings extends ConsumerWidget {
             value: overlay.isOpen,
             title: Text(t('settings.overlay.enabled.title')),
             subtitle: Text(t('settings.overlay.enabled.description')),
-            onChanged: (value) => ref
-                .read(overlayServiceProvider.notifier)
-                .toggle(),
+            onChanged: (value) =>
+                ref.read(overlayServiceProvider.notifier).toggle(),
           ),
           ListTile(
             title: Text(t('settings.overlay.position.title')),

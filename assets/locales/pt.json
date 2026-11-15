@@ -371,14 +371,13 @@
     "repeat_off": "Repetir: desativado",
     "repeat_all": "Repetir: tudo",
     "repeat_one": "Repetir: faixa",
-    "open_player": "Abrir player",
+    "open_player": "Abrir o player",
     "nothing_playing": "Não há nada tocando",
     "choose_track": "Escolha uma faixa na pesquisa",
     "queue": "Fila",
     "lyrics": "Letra",
     "volume": "Volume",
     "previous": "Anterior",
-    "open_player": "Abrir o player",
     "next": "Próxima",
     "repeat": "Repetir",
     "lyrics_upgraded": "Letras aprimoradas!",
@@ -461,7 +460,12 @@
   },
   "settings": {
     "updater": {
-      "unsupported": "As atualizações automáticas não são compatíveis com esta plataforma."
+      "unsupported": "As atualizações automáticas não são compatíveis com esta plataforma.",
+      "check": "Check for updates",
+      "available": "Update available",
+      "available_version": "Version {version} available",
+      "up_to_date": "You are up to date",
+      "error": "Update check failed."
     },
     "title": "Configurações",
     "search_placeholder": "Pesquisar configurações...",
@@ -629,7 +633,8 @@
         "ready": "Pronto",
         "waiting": "Aguardando o Discord",
         "disabled": "Desativado"
-      }
+      },
+      "unsupported": "Discord Rich Presence is unavailable on this platform."
     },
     "customization": {
       "description": "Papel de parede da janela, transparência e efeitos de desfoque nos blocos.",

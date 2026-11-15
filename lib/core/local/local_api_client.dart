@@ -81,6 +81,65 @@ class LocalApiClient extends ApiClient {
         }
         return data['user'];
       }
+      final albums = <String, Map<String, dynamic>>{};
+      final artists = <String, Map<String, dynamic>>{};
+      for (final raw in tracks.values) {
+        final t = _map(raw);
+        final album = _map(t['album']);
+        final credits = t['artists'] is List ? t['artists'] as List : const [];
+        if ('${album['id'] ?? ''}'.isNotEmpty) {
+          final entry = albums.putIfAbsent(
+            '${album['id']}',
+            () => {
+              ...album,
+              'type': 'album',
+              'artists': credits,
+              'cover': t['cover'],
+              'tracks': <dynamic>[],
+              'durationMs': 0,
+            },
+          );
+          (entry['tracks'] as List).add(t);
+          entry['trackCount'] = (entry['tracks'] as List).length;
+          entry['durationMs'] =
+              (entry['durationMs'] as int) +
+              ((t['durationMs'] as num?)?.toInt() ?? 0);
+        }
+        for (final rawCredit in credits) {
+          final credit = _map(rawCredit);
+          final id = '${credit['id'] ?? ''}';
+          if (id.isEmpty || id == 'unknown') continue;
+          final entry = artists.putIfAbsent(
+            id,
+            () => {
+              ...credit,
+              'type': 'artist',
+              'cover': t['cover'],
+              'tracks': <dynamic>[],
+              'albums': <dynamic>[],
+            },
+          );
+          (entry['tracks'] as List).add(t);
+          if (albums.containsKey(album['id']) &&
+              !(entry['albums'] as List).any((a) => a['id'] == album['id'])) {
+            (entry['albums'] as List).add(albums[album['id']]);
+          }
+        }
+      }
+      if (segments.length == 3 && segments[1] == 'albums') {
+        final album = albums[segments[2]];
+        if (album == null) {
+          throw ApiException(404, 'Album is not in this library.');
+        }
+        return album;
+      }
+      if (segments.length == 3 && segments[1] == 'artists') {
+        final artist = artists[segments[2]];
+        if (artist == null) {
+          throw ApiException(404, 'Artist is not in this library.');
+        }
+        return artist;
+      }
       if (path == '/v1/search') {
         final words = '${query?['q'] ?? ''}'.trim().toLowerCase().split(
           RegExp(r'\s+'),
@@ -98,9 +157,18 @@ class LocalApiClient extends ApiClient {
             .toList();
         return {
           'items': [
+            for (final entity in [...albums.values, ...artists.values])
+              if ((type == 'all' || type == entity['type']) &&
+                  words.every(
+                    (word) => '${entity['title'] ?? entity['name']}'
+                        .toLowerCase()
+                        .contains(word),
+                  ))
+                entity,
             if (type == 'all' || type == 'track')
               for (final t in matches)
                 {
+                  ...t,
                   'type': 'track',
                   'id': t['id'],
                   'track': t,
@@ -168,10 +236,16 @@ class LocalApiClient extends ApiClient {
         } else {
           final key = '$type:$id';
           if (method == 'PUT') {
+            final entity = type == 'albums'
+                ? _map(albums[id])
+                : type == 'artists'
+                ? _map(artists[id])
+                : _map(_map(playlists[id])['playlist']);
             collections[key] = {
               'id': id,
               'type': type,
-              'title': id,
+              'title': entity['title'] ?? entity['name'] ?? id,
+              'cover': entity['cover'],
               'savedAt': _now(),
             };
           }

@@ -454,7 +454,12 @@
   },
   "settings": {
     "updater": {
-      "unsupported": "Автоматические обновления не поддерживаются на этой платформе."
+      "unsupported": "Автоматические обновления не поддерживаются на этой платформе.",
+      "check": "Check for updates",
+      "available": "Update available",
+      "available_version": "Version {version} available",
+      "up_to_date": "You are up to date",
+      "error": "Update check failed."
     },
     "title": "Настройки",
     "search_placeholder": "Поиск настроек...",
@@ -622,7 +627,8 @@
         "ready": "Готово",
         "waiting": "Ожидание Discord",
         "disabled": "Отключено"
-      }
+      },
+      "unsupported": "Discord Rich Presence is unavailable on this platform."
     },
     "miniplayer": {
       "description": "Поведение плавающего мини-плеера, таймлайн и внешний вид.",

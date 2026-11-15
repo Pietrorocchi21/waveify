@@ -451,7 +451,12 @@
   },
   "settings": {
     "updater": {
-      "unsupported": "Gli aggiornamenti automatici non sono supportati su questa piattaforma."
+      "unsupported": "Gli aggiornamenti automatici non sono supportati su questa piattaforma.",
+      "check": "Controlla aggiornamenti",
+      "available": "Aggiornamento disponibile",
+      "available_version": "Versione {version} disponibile",
+      "up_to_date": "Hai la versione più recente",
+      "error": "Controllo non riuscito."
     },
     "title": "Impostazioni",
     "search_placeholder": "Cerca nelle impostazioni...",
@@ -872,7 +877,10 @@
     "customization.content": "Contenuto",
     "customization.miniplayer": "Mini player",
     "customization.glass_preset": "Il preset vetro sfoca ciò che sta dietro ai blocchi.",
-    "customization.apply_to_all": "Applica a tutti"
+    "customization.apply_to_all": "Applica a tutti",
+    "discord": {
+      "unsupported": "Discord Rich Presence non è disponibile su questa piattaforma."
+    }
   },
   "toast": {
     "playlist_created": "Playlist creata",

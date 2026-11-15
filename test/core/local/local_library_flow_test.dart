@@ -234,4 +234,37 @@ void main() {
       );
     },
   );
+  test(
+    'search retains playable metadata and imported artist and album details',
+    () async {
+      final file = await wav('Artist - Title');
+      final track = Track(
+        id: 'local-search',
+        title: 'Title',
+        artists: 'Artist',
+        artistList: const [TrackArtist(id: 'artist-local', name: 'Artist')],
+        album: const TrackAlbum(id: 'album-local', title: 'My Album'),
+        durationMs: 1000,
+        sourceUrl: file.uri.toString(),
+      );
+      await store.update((data) {
+        (data['tracks'] as Map)[track.id] = track.toSnapshot();
+      });
+      final found = (await api.search('Title', type: 'track')).single;
+      expect(found.track?.sourceUrl, file.uri.toString());
+      expect(found.track?.artists, 'Artist');
+      expect(found.track?.durationMs, 1000);
+      expect(
+        (await api.search('Artist', type: 'artist')).single.name,
+        'Artist',
+      );
+      expect((await api.getArtist('artist-local')).tracks.single.id, track.id);
+      expect((await api.getAlbum('album-local')).tracks.single.id, track.id);
+      await api.saveCollection('albums', 'album-local');
+      expect(
+        (await api.listSavedCollections('albums')).single.title,
+        'My Album',
+      );
+    },
+  );
 }

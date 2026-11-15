@@ -454,7 +454,12 @@
   },
   "settings": {
     "updater": {
-      "unsupported": "Las actualizaciones automáticas no son compatibles con esta plataforma."
+      "unsupported": "Las actualizaciones automáticas no son compatibles con esta plataforma.",
+      "check": "Check for updates",
+      "available": "Update available",
+      "available_version": "Version {version} available",
+      "up_to_date": "You are up to date",
+      "error": "Update check failed."
     },
     "title": "Ajustes",
     "search_placeholder": "Buscar ajustes...",
@@ -564,7 +569,8 @@
         "ready": "Listo",
         "waiting": "Esperando a Discord",
         "disabled": "Desactivado"
-      }
+      },
+      "unsupported": "Discord Rich Presence is unavailable on this platform."
     },
     "customization": {
       "description": "Fondo de pantalla de la ventana, transparencia y efectos de desenfoque.",

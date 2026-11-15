@@ -160,9 +160,7 @@ class PlaylistDetailPage extends ConsumerWidget {
           final tracks = data.items.map((e) => e.track).toList(growable: false);
           return ReorderableListView.builder(
             padding: const EdgeInsets.only(bottom: 32),
-            // This handler adjusts the insertion index for the removed row.
-            // ignore: deprecated_member_use
-            onReorder: (oldIndex, newIndex) =>
+            onReorderItem: (oldIndex, newIndex) =>
                 _reorder(context, ref, data, oldIndex, newIndex),
             itemCount: tracks.length + 1,
             itemBuilder: (context, index) {
@@ -236,12 +234,12 @@ class PlaylistDetailPage extends ConsumerWidget {
     if (oldIndex <= 0 || oldIndex > items.length) return;
     // The first row of the list is the header.
     final from = oldIndex - 1;
-    var to = newIndex - 1;
-    if (to > from) to -= 1;
+    final to = newIndex - 1;
     if (to < 0 || to >= items.length || to == from) return;
 
     final moved = items[from];
-    final before = to < items.length ? items[to].id : null;
+    final remaining = [...items]..removeAt(from);
+    final before = to < remaining.length ? remaining[to].id : null;
 
     try {
       await ref

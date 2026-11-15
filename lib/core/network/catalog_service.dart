@@ -29,36 +29,36 @@ class CatalogService {
   /// The details of a track.
   Future<Track> getTrack(String id) async {
     try {
-      return await _catalog.getTrack(id);
+      return await _api.getTrack(id);
     } catch (_) {
-      return _api.getTrack(id);
+      return _catalog.getTrack(id);
     }
   }
 
   /// The details of an album.
   Future<AlbumDetails> getAlbum(String id) async {
     try {
-      return await _catalog.getAlbum(id);
+      return await _api.getAlbum(id);
     } catch (_) {
-      return _api.getAlbum(id);
+      return _catalog.getAlbum(id);
     }
   }
 
   /// The details of a playlist.
   Future<CatalogPlaylistDetails> getPlaylist(String id) async {
     try {
-      return await _catalog.getPlaylist(id);
+      return await _api.getPlaylist(id);
     } catch (_) {
-      return _api.getPlaylist(id);
+      return _catalog.getPlaylist(id);
     }
   }
 
   /// The details of an artist.
   Future<ArtistDetails> getArtist(String id) async {
     try {
-      return await _catalog.getArtist(id);
+      return await _api.getArtist(id);
     } catch (_) {
-      return _api.getArtist(id);
+      return _catalog.getArtist(id);
     }
   }
 

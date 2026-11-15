@@ -455,7 +455,12 @@
   },
   "settings": {
     "updater": {
-      "unsupported": "Automatyczne aktualizacje nie są obsługiwane na tej platformie."
+      "unsupported": "Automatyczne aktualizacje nie są obsługiwane na tej platformie.",
+      "check": "Check for updates",
+      "available": "Update available",
+      "available_version": "Version {version} available",
+      "up_to_date": "You are up to date",
+      "error": "Update check failed."
     },
     "title": "Ustawienia",
     "search_placeholder": "Szukaj w ustawieniach...",
@@ -876,7 +881,10 @@
     "customization.content": "Treść",
     "customization.miniplayer": "Mini odtwarzacz",
     "customization.glass_preset": "Preset szkła rozmywa to, co jest za blokami.",
-    "customization.apply_to_all": "Zastosuj do wszystkich"
+    "customization.apply_to_all": "Zastosuj do wszystkich",
+    "discord": {
+      "unsupported": "Discord Rich Presence is unavailable on this platform."
+    }
   },
   "toast": {
     "playlist_created": "Utworzono playlistę",
