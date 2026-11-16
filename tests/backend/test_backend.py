@@ -7,7 +7,7 @@ import unittest
 
 from tool.backend import crypto
 from tool.backend.manage import (BackendError, PsqlDatabase, backup, health,
-    inspect_backup, migration_sql, restore, safe_path)
+    inspect_backup, migration_sql, restore, safe_path, Storage)
 
 A = '00000000-0000-4000-8000-000000000001'
 B = '00000000-0000-4000-8000-000000000002'
@@ -45,6 +45,26 @@ class CryptoTests(unittest.TestCase):
         self.assertEqual(str(safe_path('owner/audio.mp3')), 'owner/audio.mp3')
         with self.assertRaises(ValueError):
             crypto._cipher('short', bytes(16))
+
+
+class StorageContractTests(unittest.TestCase):
+    def test_private_download_upload_and_delete_contract(self):
+        import io
+        from unittest.mock import patch
+        requests = []
+        def respond(request, **kwargs):
+            requests.append(request)
+            return io.BytesIO(b'audio' if request.method == 'GET' else b'{}')
+        storage = Storage('https://example.supabase.co', 'server-test-only')
+        with tempfile.TemporaryDirectory() as tmp, patch('tool.backend.manage.urlopen', side_effect=respond):
+            name = 'owner/album art.mp3'
+            self.assertEqual(storage.download(name, Path(tmp) / 'song', 100), 5)
+            storage.upload(name, b'audio')
+            storage.delete(name)
+        self.assertTrue(requests[0].full_url.endswith('/object/authenticated/waveify_media/owner/album%20art.mp3'))
+        self.assertEqual(requests[1].method, 'POST')
+        self.assertEqual(requests[2].full_url, 'https://example.supabase.co/storage/v1/object/waveify_media')
+        self.assertEqual(json.loads(requests[2].data), {'prefixes': [name]})
 
 
 class FakeStorage:
@@ -139,7 +159,7 @@ class PostgresTests(unittest.TestCase):
 
     def test_backup_restore_moves_media_and_identity_without_overwrite(self):
         source_path = A + '/audio/song.mp3'
-        self.save(A, 'alice', tracks={'t': {'id': 't', 'sourceUrl': 'storage://waveify_media/' + source_path}})
+        self.save(A, 'alice', tracks={'t': {'id': 't', 'title': "L'estate 🌊", 'sourceUrl': 'storage://waveify_media/' + source_path}})
         self.db.execute(f"insert into storage.objects(bucket_id,name) values ('waveify_media','{source_path}')")
         storage = FakeStorage({source_path: b'actual-media-bytes'})
         with tempfile.TemporaryDirectory() as tmp:
@@ -153,6 +173,7 @@ class PostgresTests(unittest.TestCase):
             self.assertEqual(result['restored_libraries'], 1)
             data = self.db.query(f"select data from public.waveify_libraries where owner_id='{C}'")[0]['data']
             self.assertEqual(data['user']['id'], C)
+            self.assertEqual(data['tracks']['t']['title'], "L'estate 🌊")
             self.assertEqual(data['user']['email'], 'c@test.invalid')
             self.assertEqual(data['tracks']['t']['sourceUrl'], 'storage://waveify_media/' + C + '/audio/song.mp3')
             self.assertEqual(storage.files[C + '/audio/song.mp3'], b'actual-media-bytes')

@@ -173,10 +173,16 @@ class Storage:
 
     def request(self, path, method='GET', data=None):
         safe_path(path)
-        request = Request(self.url + '/storage/v1/object/' + ('authenticated/' if method == 'GET' else '') +
-                          'waveify_media/' + quote(path, safe='/'), data=data, method=method,
+        route = '/storage/v1/object/' + ('authenticated/' if method == 'GET' else '') + 'waveify_media'
+        content_type = 'application/octet-stream'
+        if method == 'DELETE':
+            data = json.dumps({'prefixes': [path]}).encode()
+            content_type = 'application/json'
+        else:
+            route += '/' + quote(path, safe='/')
+        request = Request(self.url + route, data=data, method=method,
                           headers={'apikey': self.key, 'Authorization': 'Bearer ' + self.key,
-                                   'Content-Type': 'application/octet-stream', 'x-upsert': 'false'})
+                                   'Content-Type': content_type, 'x-upsert': 'false'})
         try:
             return urlopen(request, timeout=90)
         except HTTPError as error:
