@@ -1,0 +1,33 @@
+name: Test Waveify backend
+on:
+  push:
+    paths: ['tool/backend/**', 'tests/backend/**', 'supabase/**', '.github/workflows/waveify-backend*.yml']
+  pull_request:
+    paths: ['tool/backend/**', 'tests/backend/**', 'supabase/**', '.github/workflows/waveify-backend*.yml']
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: waveify-disposable-test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r tool/backend/requirements.txt
+      - env:
+          WAVEIFY_TEST_DATABASE_URL: postgresql://postgres:waveify-disposable-test@localhost:5432/postgres?sslmode=disable
+        run: python -m unittest discover -s tests/backend -v
+      - run: |
+          python -m tool.backend.manage bundle --output /tmp/waveify-bootstrap.sql
+          cmp supabase/bootstrap.sql /tmp/waveify-bootstrap.sql

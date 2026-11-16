@@ -1,0 +1,83 @@
+name: Waveify backend
+on:
+  push:
+    branches: ['feat/windows/functional-release']
+    paths: ['tool/backend/**', 'tests/backend/**', 'supabase/**', '.github/workflows/waveify-backend.yml']
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Backend operation (restore is intentionally local only)
+        type: choice
+        options: [status, deploy, backup]
+        default: status
+      supabase_url:
+        description: Public Supabase project URL
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: waveify-backend
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: waveify-disposable-test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r tool/backend/requirements.txt
+      - name: Test migrations, isolation, encryption and portable restore
+        env:
+          WAVEIFY_TEST_DATABASE_URL: postgresql://postgres:waveify-disposable-test@localhost:5432/postgres?sslmode=disable
+        run: python -m unittest discover -s tests/backend -v
+      - name: Check reproducible SQL bundle
+        run: |
+          python -m tool.backend.manage bundle --output /tmp/waveify-bootstrap.sql
+          cmp supabase/bootstrap.sql /tmp/waveify-bootstrap.sql
+  operate:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ inputs.supabase_url || vars.SUPABASE_URL }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      WAVEIFY_DATABASE_URL: ${{ secrets.WAVEIFY_DATABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      WAVEIFY_BACKUP_PASSPHRASE: ${{ secrets.WAVEIFY_BACKUP_PASSPHRASE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r tool/backend/requirements.txt
+      - name: Read backend configuration status
+        if: github.event_name == 'push' || inputs.operation == 'status'
+        run: python -m tool.backend.manage status
+      - name: Deploy versioned Waveify schema
+        if: inputs.operation == 'deploy'
+        run: python -m tool.backend.manage deploy
+      - name: Create authenticated encrypted backup
+        if: inputs.operation == 'backup'
+        run: |
+          python -m tool.backend.manage backup --output waveify-backup.wfy
+          python -m tool.backend.manage inspect --archive waveify-backup.wfy
+      - name: Upload encrypted backup only
+        if: success() && inputs.operation == 'backup'
+        uses: actions/upload-artifact@v4
+        with:
+          name: waveify-encrypted-backup-${{ github.run_id }}
+          path: waveify-backup.wfy
+          if-no-files-found: error
+          retention-days: 7
