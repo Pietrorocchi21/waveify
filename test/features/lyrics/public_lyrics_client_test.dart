@@ -114,4 +114,40 @@ void main() {
     expect(parsed.activeLineIndex(1000), 0);
     expect(parsed.offset(500).activeLineIndex(1000), -1);
   });
+  test(
+    'non-Latin metadata stays distinct instead of collapsing to an empty match',
+    () async {
+      final dio = Dio();
+      var correct = false;
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                data: {
+                  'trackName': correct ? '夜曲' : '別的歌曲',
+                  'artistName': correct ? '周杰倫' : '別的歌手',
+                  'duration': 180,
+                  'syncedLyrics': '[00:01]Synthetic fixture',
+                },
+              ),
+            );
+          },
+        ),
+      );
+      final wrong = PublicLyricsClient(client: dio);
+      const query = Track(
+        id: 'unicode',
+        title: '夜曲',
+        artists: '周杰倫',
+        durationMs: 180000,
+      );
+      expect(await wrong.get(query), isNull);
+      correct = true;
+      final matching = PublicLyricsClient(client: dio);
+      expect((await matching.get(query))?.syncLevel, LyricsSyncLevel.lineLevel);
+      matching.close();
+    },
+  );
 }

@@ -21,10 +21,13 @@ class PublicLyricsClient {
   final Dio _client;
   final _cache = <String, LyricsCandidate?>{};
 
-  static String _normalize(String value) => value
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9\u00c0-\u024f]+'), ' ')
-      .trim();
+  static String _normalize(String value) {
+    final lowered = value.toLowerCase().trim();
+    final normalized = lowered
+        .replaceAll(RegExp(r'[^\p{L}\p{M}\p{N}]+', unicode: true), ' ')
+        .trim();
+    return normalized.isEmpty ? lowered : normalized;
+  }
 
   bool _matches(Map<String, dynamic> data, Track track) {
     final duration = data['duration'];

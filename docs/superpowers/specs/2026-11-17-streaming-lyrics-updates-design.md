@@ -23,7 +23,7 @@ Release, HTTPS trust restrictions, byte count and SHA256 checks. An external
 PowerShell helper waits for the running process to exit, rechecks integrity,
 installs the same Inno Setup AppId in the existing directory and restarts the app.
 Keep user documents and settings separate from installed files. Check quietly
-at startup at most once per12 hours, notify inside the app, download/install only
+at startup at most once per 12 hours, notify inside the app, download/install only
 on user action. Android keeps the Google Play path; unsupported platforms are
 identified accurately. Initial installation of this updater-bearing version is
 an over-install; the previous build cannot gain new updater code remotely.
