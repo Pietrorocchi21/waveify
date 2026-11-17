@@ -8,7 +8,7 @@ on:
       operation:
         description: Backend operation (restore is intentionally local only)
         type: choice
-        options: [status, deploy, backup]
+        options: [status, deploy, verify-live, backup]
         default: status
       supabase_url:
         description: Public Supabase project URL
@@ -68,6 +68,9 @@ jobs:
       - name: Deploy versioned Waveify schema
         if: inputs.operation == 'deploy'
         run: python -m tool.backend.manage deploy
+      - name: Verify live authentication, isolation, storage and remote state
+        if: inputs.operation == 'deploy' || inputs.operation == 'verify-live'
+        run: python -m tool.backend.live_check
       - name: Create authenticated encrypted backup
         if: inputs.operation == 'backup'
         run: |

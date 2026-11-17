@@ -72,6 +72,7 @@ class ManagementDatabase:
         if not re.fullmatch(r'[a-z0-9]{20}\.supabase\.co', host):
             raise BackendError('Management API requires a standard Supabase project URL.')
         self.ref, self.token = host.split('.')[0], token
+        self.project_url = project_url.rstrip('/')
 
     def api(self, path, body=None):
         req = Request('https://api.supabase.com/v1/projects/' + self.ref + path,
@@ -136,7 +137,8 @@ def configured_database(env=os.environ):
     if env.get('WAVEIFY_DATABASE_URL'):
         return PsqlDatabase(env['WAVEIFY_DATABASE_URL'])
     if env.get('SUPABASE_ACCESS_TOKEN'):
-        return ManagementDatabase(env.get('SUPABASE_URL', ''), env['SUPABASE_ACCESS_TOKEN'])
+        url = env.get('SUPABASE_URL') or json.loads((ROOT / 'supabase/project.json').read_text())['url']
+        return ManagementDatabase(url, env['SUPABASE_ACCESS_TOKEN'])
     return None
 
 
@@ -215,7 +217,8 @@ def storage_client(db, env=os.environ):
         key = db.server_key()
     if not key:
         raise BackendError('A server storage key is required to export or restore media.')
-    return Storage(env.get('SUPABASE_URL', ''), key)
+    url = db.project_url if isinstance(db, ManagementDatabase) else env.get('SUPABASE_URL', '')
+    return Storage(url, key)
 
 
 def export_state(db):

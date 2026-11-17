@@ -24,9 +24,12 @@ Il connettore GitHub attuale non può creare questi secret. La publishable key
 serve al client e non permette di installare tabelle o policy.
 
 Avviare il workflow **Waveify backend** sul branch del progetto:
-`status` verifica configurazione; `deploy` installa le sole migrazioni Waveify
+`status` verifica configurazione; `verify-live` collauda il progetto con due
+account temporanei confermati via API amministrativa (senza invio email),
+controlla login, libreria, isolamento, file privati e stato remoto e rimuove
+account e file al termine. `deploy` installa le sole migrazioni Waveify
 0004 e successive in una transazione, senza applicare le vecchie migrazioni
-legacy. Un registro privato con checksum impedisce riesecuzioni accidentali e
+legacy e avvia poi il collaudo live. Un registro privato con checksum impedisce riesecuzioni accidentali e
 rileva modifiche a migrazioni già installate. Non modificare file già applicati:
 aggiungere una nuova migrazione.
 
@@ -94,3 +97,8 @@ la cronologia locale conserva gli ultimi 2.000 eventi. Questi limiti riducono i
 consumi ma non sostituiscono le quote complessive del piano Free. Un upgrade o
 un trasferimento futuro richiede una decisione esplicita: il workflow non cambia
 abbonamenti, non crea istanze e non attiva fatturazione.
+
+Il progetto predefinito è indicato nel file pubblico `supabase/project.json`;
+`SUPABASE_URL` esplicito ha precedenza. Con una connessione PostgreSQL diretta,
+lo storage richiede sempre `SUPABASE_URL` esplicito per evitare ambiguità tra
+progetti durante i trasferimenti.
