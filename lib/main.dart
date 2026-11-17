@@ -1,7 +1,10 @@
-import 'dart:io' show File, Platform, exit;
+import 'dart:io' show File, Platform, exit, pid;
 import 'dart:convert';
 
 import 'core/diagnostics/native_self_test.dart';
+import 'core/diagnostics/network_self_test.dart';
+import 'core/diagnostics/ota_self_test.dart';
+import 'core/diagnostics/update_feed_self_test.dart';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +46,35 @@ Future<void> main(List<String> args) async {
     );
     exit(ok ? 0 : 1);
   }
+
+  String? argument(String name) => args
+      .where((arg) => arg.startsWith('$name='))
+      .firstOrNull
+      ?.substring(name.length + 1);
+  if (args.contains('--update-feed-self-test')) {
+    final passed = await runUpdateFeedSelfTest(
+      argument('--self-test-output') ?? 'waveify-feed-test.json',
+    );
+    exit(passed ? 0 : 1);
+  }
+  if (args.contains('--network-self-test')) {
+    final passed = await runNetworkSelfTest(
+      argument('--self-test-output') ?? 'waveify-network-test.json',
+    );
+    exit(passed ? 0 : 1);
+  }
+  if (args.contains('--ota-self-test')) {
+    await startOtaSelfTest(
+      installerPath: argument('--ota-installer')!,
+      hash: argument('--ota-sha256')!,
+      targetExecutable: argument('--ota-target')!,
+      reportPath: argument('--ota-report')!,
+      startupPath: argument('--ota-startup')!,
+    );
+    exit(0);
+  }
+  final otaReport = argument('--ota-verify-state');
+  if (otaReport != null) await verifyOtaSelfTest(otaReport);
 
   // The updater is prepared before the first frame.
   UpdaterService.instance.initialize();
@@ -94,6 +126,7 @@ Future<void> main(List<String> args) async {
         jsonEncode({
           'status': 'passed',
           'first_frame': 'rendered',
+          'pid': pid,
           'window_fits_work_area': await WindowService.instance.fitsWorkArea(),
           'authenticated': container
               .read(authControllerProvider)

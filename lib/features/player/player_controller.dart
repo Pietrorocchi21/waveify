@@ -306,7 +306,8 @@ class PlayerController extends Notifier<PlayerState> {
       );
     }
 
-    if (track.sourceUrl.isNotEmpty ||
+    if (track.id.startsWith('audius:') ||
+        track.sourceUrl.isNotEmpty ||
         track.id.startsWith('https://') ||
         track.id.startsWith('http://') ||
         track.id.startsWith('file:')) {
@@ -321,6 +322,13 @@ class PlayerController extends Notifier<PlayerState> {
     }
     // The backend can return an expiring URL and the required request headers.
     return _resolver.resolveTrackStream(track);
+  }
+
+  /// Finish pending history writes before the update helper closes this process.
+  Future<void> prepareForUpdate() async {
+    await pause();
+    _telemetry.flush();
+    await _telemetry.pendingFlush;
   }
 
   /// The current position of the playback.
@@ -892,6 +900,7 @@ class _TelemetryTracker {
   _TelemetryTracker(this._api);
 
   final WaveifyApi _api;
+  Future<void> pendingFlush = Future.value();
 
   String? _activeTrackId;
   Track? _activeTrack;
@@ -1003,7 +1012,7 @@ class _TelemetryTracker {
 
       final playbackContext = _context;
       unawaited(
-        _api
+        pendingFlush = _api
             .recordPlaybackEvent({
               'playbackSessionId': _playbackSessionId,
               'listeningSessionId': _getOrCreateListeningSession(),
@@ -1027,6 +1036,7 @@ class _TelemetryTracker {
                       'height': 512,
                     },
                   'durationMs': snapshot.durationMs,
+                  'downloadable': snapshot.downloadable,
                 },
               'playedDurationMs': _playedDurationMs,
               if (_trackDurationMs > 0) 'trackDurationMs': _trackDurationMs,

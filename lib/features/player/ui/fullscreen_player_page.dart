@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
@@ -261,10 +262,15 @@ class _LyricsTab extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
         ],
-        if (lyrics.isLoading)
+        if (lyrics.isLoading && lyrics.parsed == null)
           const LoadingState()
         else if (lyrics.error != null)
           ErrorState(message: lyrics.error!)
+        else if (lyrics.candidate?.isInstrumental == true)
+          EmptyState(
+            icon: Icons.music_note,
+            title: t('player.lyrics_instrumental'),
+          )
         else if (lyrics.parsed == null ||
             (lyrics.parsed!.syncedLines.isEmpty &&
                 lyrics.parsed!.plainLyrics == null))
@@ -274,16 +280,29 @@ class _LyricsTab extends ConsumerWidget {
             description: t('player.no_lyrics_found'),
           )
         else
-          _SyncedLyricsView(lyrics: lyrics.parsed!),
+          _SyncedLyricsView(
+            key: ValueKey(lyrics.trackId),
+            lyrics: lyrics.parsed!,
+          ),
         if (lyrics.parsed?.plainLyrics != null &&
             (lyrics.parsed?.syncedLines.isEmpty ?? true))
           Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: Text(
-              lyrics.parsed!.plainLyrics!,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.textSecondary,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t('player.lyrics_unsynced'),
+                  style: theme.textTheme.labelMedium,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  lyrics.parsed!.plainLyrics!,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
       ],
@@ -291,38 +310,84 @@ class _LyricsTab extends ConsumerWidget {
   }
 }
 
-class _SyncedLyricsView extends ConsumerWidget {
-  const _SyncedLyricsView({required this.lyrics});
-
+class _SyncedLyricsView extends ConsumerStatefulWidget {
+  const _SyncedLyricsView({super.key, required this.lyrics});
   final ParsedLyrics lyrics;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SyncedLyricsView> createState() => _SyncedLyricsViewState();
+}
+
+class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
+  final _keys = <GlobalKey>[];
+  ScrollPosition? _position;
+  DateTime _resumeAt = DateTime.fromMillisecondsSinceEpoch(0);
+  int _lastActive = -2;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _position?.removeListener(_onScroll);
+    _position = Scrollable.maybeOf(context)?.position;
+    _position?.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_position?.userScrollDirection != ScrollDirection.idle) {
+      _resumeAt = DateTime.now().add(const Duration(seconds: 4));
+      _lastActive = -2;
+    }
+  }
+
+  @override
+  void dispose() {
+    _position?.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lyrics = widget.lyrics;
     final positionMs = ref.watch(
       playerControllerProvider.select((s) => s.position.inMilliseconds),
     );
-
-    var activeIndex = -1;
-    for (var i = 0; i < lyrics.syncedLines.length; i++) {
-      final line = lyrics.syncedLines[i];
-      if (positionMs >= line.timeMs) {
-        activeIndex = i;
-      } else {
-        break;
-      }
+    final activeIndex = lyrics.activeLineIndex(positionMs);
+    while (_keys.length < lyrics.syncedLines.length) {
+      _keys.add(GlobalKey());
     }
-
+    if (activeIndex != _lastActive &&
+        activeIndex >= 0 &&
+        DateTime.now().isAfter(_resumeAt)) {
+      _lastActive = activeIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || DateTime.now().isBefore(_resumeAt)) return;
+        final target = _keys[activeIndex].currentContext;
+        if (target != null) {
+          Scrollable.ensureVisible(
+            target,
+            alignment: 0.35,
+            duration: const Duration(milliseconds: 300),
+          );
+        }
+      });
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (var i = 0; i < lyrics.syncedLines.length; i++)
           AnimatedOpacity(
+            key: _keys[i],
             duration: const Duration(milliseconds: 180),
             opacity: i == activeIndex ? 1 : 0.68,
-            child: _LyricLineView(
-              line: lyrics.syncedLines[i],
-              isActive: i == activeIndex,
-              positionMs: positionMs,
+            child: InkWell(
+              onTap: () => ref
+                  .read(playerControllerProvider.notifier)
+                  .seek(Duration(milliseconds: lyrics.syncedLines[i].timeMs)),
+              child: _LyricLineView(
+                line: lyrics.syncedLines[i],
+                isActive: i == activeIndex,
+                positionMs: positionMs,
+              ),
             ),
           ),
       ],

@@ -51,8 +51,9 @@ class TrackRow extends ConsumerWidget {
     final t = ref.watch(translatorProvider);
     // Only the current track id is watched: the position ticks several
     // times per second and would rebuild every row of the list.
-    final currentTrackId =
-        ref.watch(playerControllerProvider.select((s) => s.currentTrack?.id));
+    final currentTrackId = ref.watch(
+      playerControllerProvider.select((s) => s.currentTrack?.id),
+    );
     final isCurrent = currentTrackId == track.id;
     // The library is watched, not just read, so the like state updates as
     // soon as it changes.
@@ -60,17 +61,13 @@ class TrackRow extends ConsumerWidget {
     final isLiked = library.likedTracks.any((t) => t.id == track.id);
 
     return InkWell(
-      onTap: onTap ??
-          () => ref.read(playerControllerProvider.notifier).playTrack(
-                track,
-                queue: queue ?? [track],
-                context: context_,
-              ),
+      onTap:
+          onTap ??
+          () => ref
+              .read(playerControllerProvider.notifier)
+              .playTrack(track, queue: queue ?? [track], context: context_),
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: dense ? 4 : 6,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: dense ? 4 : 6),
         child: Row(
           children: [
             if (showCover)
@@ -101,8 +98,7 @@ class TrackRow extends ConsumerWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight:
-                          isCurrent ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
                       color: isCurrent ? theme.colorScheme.primary : null,
                     ),
                   ),
@@ -189,28 +185,17 @@ class TrackMenuButton extends ConsumerWidget {
         }
       },
       itemBuilder: (context) => [
-        PopupMenuItem(
-          value: 'play',
-          child: Text(t('common.play_now')),
-        ),
-        PopupMenuItem(
-          value: 'next',
-          child: Text(t('common.play_next')),
-        ),
-        PopupMenuItem(
-          value: 'queue',
-          child: Text(t('common.add_to_queue')),
-        ),
-        PopupMenuItem(
-          value: 'radio',
-          child: Text(t('player.autoplay_radio')),
-        ),
+        PopupMenuItem(value: 'play', child: Text(t('common.play_now'))),
+        PopupMenuItem(value: 'next', child: Text(t('common.play_next'))),
+        PopupMenuItem(value: 'queue', child: Text(t('common.add_to_queue'))),
+        PopupMenuItem(value: 'radio', child: Text(t('player.autoplay_radio'))),
         PopupMenuItem(
           value: 'playlist',
           child: Text(t('common.add_to_playlist')),
         ),
         PopupMenuItem(
           value: 'download',
+          enabled: track.downloadable,
           child: Text(t('common.download_offline')),
         ),
       ],
@@ -297,7 +282,9 @@ class _AddToPlaylistSheetState extends ConsumerState<_AddToPlaylistSheet> {
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : null,
                         onTap: busy
@@ -306,7 +293,10 @@ class _AddToPlaylistSheetState extends ConsumerState<_AddToPlaylistSheet> {
                                 setState(() => _busy.add(playlist.id));
                                 final added = await ref
                                     .read(libraryControllerProvider.notifier)
-                                    .addTrackToPlaylist(playlist.id, widget.track);
+                                    .addTrackToPlaylist(
+                                      playlist.id,
+                                      widget.track,
+                                    );
                                 if (!mounted) return;
                                 setState(() => _busy.remove(playlist.id));
                                 if (added && context.mounted) {

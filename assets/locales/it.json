@@ -416,7 +416,9 @@
     "reorder_queue": "Riordina la coda",
     "lyrics_offset_hint": "Un valore negativo anticipa i testi, uno positivo li ritarda",
     "next": "Avanti",
-    "previous": "Indietro"
+    "previous": "Indietro",
+    "lyrics_instrumental": "Brano strumentale",
+    "lyrics_unsynced": "Il testo sincronizzato non è disponibile per questa registrazione."
   },
   "playlist": {
     "playlist": "Playlist",
@@ -447,7 +449,10 @@
     "albums": "Album",
     "playlists": "Playlist",
     "no_results": "Nessun risultato",
-    "type_to_search": "Digita per cercare"
+    "type_to_search": "Digita per cercare",
+    "online": "Online · Audius",
+    "library": "La mia libreria",
+    "online_prompt": "Cerca musica da ascoltare online"
   },
   "settings": {
     "updater": {
@@ -456,7 +461,15 @@
       "available": "Aggiornamento disponibile",
       "available_version": "Versione {version} disponibile",
       "up_to_date": "Hai la versione più recente",
-      "error": "Controllo non riuscito."
+      "error": "Controllo non riuscito.",
+      "checking": "Ricerca aggiornamenti…",
+      "downloading": "Download aggiornamento",
+      "ready": "Aggiornamento verificato e pronto. Libreria e impostazioni verranno conservate.",
+      "installing": "Installazione aggiornamento e riavvio…",
+      "install": "Installa aggiornamento",
+      "download": "Scarica aggiornamento",
+      "restart_install": "Riavvia e installa",
+      "releases": "Apri versioni"
     },
     "title": "Impostazioni",
     "search_placeholder": "Cerca nelle impostazioni...",

@@ -114,6 +114,7 @@ class Track {
     this.album,
     this.playlistItemId,
     this.viewerLiked = false,
+    this.downloadable = true,
   });
 
   /// Normalises the many shapes the API uses for a track into one model.
@@ -230,6 +231,7 @@ class Track {
       album: album,
       playlistItemId: asStringOrNull(source['playlistItemId']),
       viewerLiked: viewer != null && asBool(viewer['liked']),
+      downloadable: source['downloadable'] != false,
     );
   }
 
@@ -247,6 +249,7 @@ class Track {
   final TrackAlbum? album;
   final String? playlistItemId;
   final bool viewerLiked;
+  final bool downloadable;
 
   /// Snapshot shape sent to the server when liking a track.
   Map<String, dynamic> toSnapshot() => {
@@ -264,6 +267,7 @@ class Track {
     if (coverUrl.isNotEmpty)
       'cover': {'url': coverUrl, 'width': 512, 'height': 512},
     'durationMs': durationMs,
+    'downloadable': downloadable,
   };
 
   Track copyWith({
@@ -281,6 +285,7 @@ class Track {
     TrackAlbum? album,
     String? playlistItemId,
     bool? viewerLiked,
+    bool? downloadable,
   }) {
     return Track(
       id: id ?? this.id,
@@ -297,6 +302,7 @@ class Track {
       album: album ?? this.album,
       playlistItemId: playlistItemId ?? this.playlistItemId,
       viewerLiked: viewerLiked ?? this.viewerLiked,
+      downloadable: downloadable ?? this.downloadable,
     );
   }
 

@@ -420,7 +420,9 @@
     "reorder_queue": "Zmień kolejność kolejki",
     "lyrics_offset_hint": "Ujemna wartość przesuwa tekst wcześniej",
     "next": "Dalej",
-    "previous": "Wstecz"
+    "previous": "Wstecz",
+    "lyrics_instrumental": "Instrumental track",
+    "lyrics_unsynced": "Timed lyrics are unavailable for this recording."
   },
   "playlist": {
     "playlist": "Playlista",
@@ -451,16 +453,27 @@
     "albums": "Albumy",
     "playlists": "Playlisty",
     "no_results": "Brak wyników",
-    "type_to_search": "Zacznij pisać, aby wyszukać"
+    "type_to_search": "Zacznij pisać, aby wyszukać",
+    "online": "Online · Audius",
+    "library": "My library",
+    "online_prompt": "Search music to stream online"
   },
   "settings": {
     "updater": {
-      "unsupported": "Automatyczne aktualizacje nie są obsługiwane na tej platformie.",
+      "unsupported": "Automatic updates are not supported on this platform.",
       "check": "Check for updates",
       "available": "Update available",
       "available_version": "Version {version} available",
       "up_to_date": "You are up to date",
-      "error": "Update check failed."
+      "error": "Update check failed.",
+      "checking": "Checking for updates…",
+      "downloading": "Downloading update",
+      "ready": "Update verified and ready. Your library and settings will be kept.",
+      "installing": "Installing update and restarting…",
+      "install": "Install update",
+      "download": "Download update",
+      "restart_install": "Restart and install",
+      "releases": "Open releases"
     },
     "title": "Ustawienia",
     "search_placeholder": "Szukaj w ustawieniach...",

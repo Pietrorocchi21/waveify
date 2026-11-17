@@ -12,12 +12,17 @@ class InnertubeCatalog {
   yt.YoutubeExplode? _owned;
   yt.YoutubeExplode get client => _provided ?? (_owned ??= yt.YoutubeExplode());
   void close() => _owned?.close();
+  static String _artistName(String author) => author
+      .replaceFirst(RegExp(r'\s*-\s*Topic$', caseSensitive: false), '')
+      .trim();
   static Track mapVideo(yt.Video video) => Track(
     id: video.id.value,
     title: video.title,
-    artists: video.author,
+    artists: _artistName(video.author),
     artistId: video.channelId.value,
-    artistList: [TrackArtist(id: video.channelId.value, name: video.author)],
+    artistList: [
+      TrackArtist(id: video.channelId.value, name: _artistName(video.author)),
+    ],
     coverUrl: video.thumbnails.highResUrl,
     durationMs: video.duration?.inMilliseconds ?? 0,
   );
@@ -71,9 +76,11 @@ class InnertubeCatalog {
             track: Track(
               id: item.id.value,
               title: item.title,
-              artists: item.author,
+              artists: _artistName(item.author),
               artistId: item.channelId,
-              artistList: [TrackArtist(id: item.channelId, name: item.author)],
+              artistList: [
+                TrackArtist(id: item.channelId, name: _artistName(item.author)),
+              ],
               coverUrl: item.thumbnails.isEmpty
                   ? ''
                   : item.thumbnails.last.url.toString(),

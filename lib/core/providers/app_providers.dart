@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_session_store.dart';
 import '../i18n/translator.dart';
 import '../media/innertube/innertube_catalog.dart';
+import '../media/audius/audius_catalog.dart';
 import '../media/innertube/stream_resolver.dart';
 import '../music/aggregated_music_repository.dart';
 import '../music/music_source.dart';
@@ -316,11 +317,18 @@ final musicRepositoryProvider = Provider<AggregatedMusicRepository>((ref) {
   return AggregatedMusicRepository(sources: ref.watch(musicSourcesProvider));
 });
 
+final audiusCatalogProvider = Provider<AudiusCatalog>((ref) {
+  final client = AudiusCatalog();
+  ref.onDispose(client.close);
+  return client;
+});
+
 /// The YouTube stream resolver.
 final streamResolverProvider = Provider<StreamResolver>((ref) {
   return StreamResolver(
     api: ref.watch(apiProvider),
     youtube: ref.watch(youtubeClientProvider),
+    audius: ref.watch(audiusCatalogProvider),
   );
 });
 
@@ -333,6 +341,7 @@ final innertubeCatalogProvider = Provider<InnertubeCatalog>((ref) {
 final catalogProvider = Provider<CatalogService>((ref) {
   return CatalogService(
     catalog: ref.watch(innertubeCatalogProvider),
+    audius: ref.watch(audiusCatalogProvider),
     api: ref.watch(apiProvider),
   );
 });

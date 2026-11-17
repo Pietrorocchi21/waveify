@@ -3,55 +3,28 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import 'dart:io';
 
 import '../../../models/track.dart';
+import '../audius/audius_catalog.dart';
+import '../resolved_audio_stream.dart';
+export '../resolved_audio_stream.dart';
 import '../../config/app_config.dart';
 import '../../network/waveify_api.dart';
-
-class ResolvedAudioStream {
-  const ResolvedAudioStream({
-    required this.url,
-    required this.mimeType,
-    this.durationMs = 0,
-    this.headers = const {},
-  });
-  final String url, mimeType;
-  final int durationMs;
-  final Map<String, String> headers;
-  factory ResolvedAudioStream.local(String path, {int durationMs = 0}) =>
-      ResolvedAudioStream(
-        url: File(path).uri.toString(),
-        mimeType: StreamResolver.mimeFor(path),
-        durationMs: durationMs,
-      );
-}
-
-class InnertubeException implements Exception {
-  const InnertubeException(this.message, [this.statusCode = 0]);
-  final String message;
-  final int statusCode;
-  @override
-  String toString() => 'Audio source ($statusCode): $message';
-}
 
 /// Resolves real file/HTTP sources. Unknown provider IDs require a configured
 /// backend; they are never turned into fabricated URLs.
 class StreamResolver {
-  StreamResolver({this.api, this.youtube});
+  StreamResolver({this.api, this.youtube, this.audius});
+  final AudiusCatalog? audius;
   final WaveifyApi? api;
   final yt.YoutubeExplode? youtube;
-  static String mimeFor(String path) {
-    final extension = Uri.tryParse(path)?.path.split('.').last.toLowerCase();
-    return switch (extension) {
-      'm4a' || 'mp4' => 'audio/mp4',
-      'aac' => 'audio/aac',
-      'wav' => 'audio/wav',
-      'flac' => 'audio/flac',
-      'ogg' || 'opus' => 'audio/ogg',
-      'aif' || 'aiff' => 'audio/aiff',
-      _ => 'audio/mpeg',
-    };
-  }
+  static String mimeFor(String path) => audioMimeFor(path);
 
-  Future<ResolvedAudioStream> resolveTrackStream(Track track) {
+  Future<ResolvedAudioStream> resolveTrackStream(
+    Track track, {
+    bool forDownload = false,
+  }) {
+    if (track.id.startsWith('audius:')) {
+      return _resolveAudius(track.id, forDownload: forDownload);
+    }
     final source = track.sourceUrl;
     if (source.startsWith('storage:')) {
       return resolveDirectAudioStream(track.id);
@@ -59,7 +32,20 @@ class StreamResolver {
     return resolveDirectAudioStream(source.isEmpty ? track.id : source);
   }
 
+  Future<ResolvedAudioStream> _resolveAudius(
+    String id, {
+    bool forDownload = false,
+  }) async {
+    final client = audius ?? AudiusCatalog();
+    try {
+      return await client.resolveStream(id, requireDownload: forDownload);
+    } finally {
+      if (audius == null) client.close();
+    }
+  }
+
   Future<ResolvedAudioStream> resolveDirectAudioStream(String id) async {
+    if (id.startsWith('audius:')) return _resolveAudius(id);
     final uri = Uri.tryParse(id);
     if (uri != null &&
         (uri.scheme == 'https' || uri.scheme == 'http') &&

@@ -5,7 +5,7 @@ import '../../../core/platform/discord_service.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/platform/updater_service.dart';
+import 'update_panel.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/common.dart';
 import '../../auth/auth_controller.dart';
@@ -23,36 +23,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  bool _checking = false;
-  String? _updateMessage;
-
-  Future<void> _checkForUpdate() async {
-    setState(() {
-      _checking = true;
-      _updateMessage = null;
-    });
-
-    final result = await UpdaterService.instance.check();
-    if (!mounted) return;
-
-    final t = ref.read(translatorProvider);
-    setState(() {
-      _checking = false;
-      _updateMessage = switch (result.state) {
-        UpdateState.available =>
-          result.version == null
-              ? t('settings.updater.available')
-              : t('settings.updater.available_version', {
-                  'version': result.version!,
-                }),
-        UpdateState.upToDate => t('settings.updater.up_to_date'),
-        UpdateState.error =>
-          '${t('settings.updater.error')} ${result.error ?? ''}',
-        _ => null,
-      };
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -304,31 +274,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ListTile(
                 leading: const Icon(Icons.info_outline_rounded),
                 title: Text(t('common.app.name')),
-                subtitle: Text(t('common.app.version')),
               ),
               const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.system_update_alt_rounded),
-                title: Text(t('settings.updater.check')),
-                trailing: _checking
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : null,
-                onTap: _checking ? null : _checkForUpdate,
-              ),
-              if (_updateMessage != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Text(
-                    _updateMessage!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.textTertiary,
-                    ),
-                  ),
-                ),
+              const UpdatePanel(),
             ],
           ),
         ),

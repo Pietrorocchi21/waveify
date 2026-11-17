@@ -12,6 +12,7 @@ import 'package:waveify/features/overlay/overlay_service.dart';
 import 'package:waveify/features/customization/customization_controller.dart';
 import 'package:waveify/features/player/ui/mini_player.dart';
 import 'package:waveify/features/shortcuts/shortcut_scope.dart';
+import 'package:waveify/features/settings/ui/update_notice.dart';
 import 'package:waveify/shared/widgets/glass.dart';
 
 /// The destinations of the main navigation.
@@ -104,6 +105,7 @@ class AppShell extends ConsumerWidget {
               ),
             ),
           ),
+        const UpdateNotice(),
         Expanded(
           child: DecoratedBlock(
             block: CustomizationBlock.contentView,

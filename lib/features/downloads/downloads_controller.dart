@@ -75,6 +75,12 @@ class DownloadsController extends Notifier<DownloadsState> {
   /// The audio is fetched from the same signed stream used for playback, and
   /// it is written in the application documents directory.
   Future<bool> download(Track track) async {
+    if (!track.downloadable) {
+      state = state.copyWith(
+        error: 'This provider permits streaming only for this recording.',
+      );
+      return false;
+    }
     if (state.isDownloaded(track.id)) return true;
     if (state.isBusy(track.id)) return false;
 
@@ -87,7 +93,10 @@ class DownloadsController extends Notifier<DownloadsState> {
     File? completed;
     try {
       final resolver = ref.read(streamResolverProvider);
-      final stream = await resolver.resolveTrackStream(track);
+      final stream = await resolver.resolveTrackStream(
+        track,
+        forDownload: true,
+      );
 
       final directory = await _store.audioDirectory();
       final extension = switch (stream.mimeType) {
