@@ -196,6 +196,7 @@ def main():
             raise BackendError('Live verification requires project API keys.')
         url = db.project_url
         report = check_project(db, ProjectApi(url, public_key), ProjectApi(url, server_key), Storage(url, server_key))
+        report['organization_plan'] = db.organization_plan()
         print(json.dumps(report))
         sys.exit(0 if report['live_checks'] == 'passed' else 1)
     except Exception as error:

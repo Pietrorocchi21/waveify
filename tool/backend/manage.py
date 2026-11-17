@@ -95,6 +95,21 @@ class ManagementDatabase:
     def execute(self, sql):
         self.query(sql)
 
+    def organization_plan(self):
+        """Read billing tier only; never change plans, add-ons or resources."""
+        try:
+            project = self.api('')
+            slug = project.get('organization_slug') or project.get('organization_id')
+            if not slug:
+                return 'unknown'
+            request = Request('https://api.supabase.com/v1/organizations/' + quote(slug, safe=''),
+                              headers={'Authorization': 'Bearer ' + self.token})
+            with urlopen(request, timeout=30) as response:
+                plan = json.load(response).get('plan')
+            return plan if plan in {'free', 'pro', 'team', 'enterprise', 'platform'} else 'unknown'
+        except (BackendError, HTTPError, URLError, ValueError):
+            return 'unknown'
+
     def server_key(self):
         for key in self.api('/api-keys'):
             if key.get('name') == 'service_role':
@@ -412,6 +427,8 @@ def main():
         db = configured_database()
         if args.operation == 'status':
             report = {'admin_configured': db is not None}
+            if isinstance(db, ManagementDatabase):
+                report['organization_plan'] = db.organization_plan()
             if db is not None:
                 try:
                     report.update(health(db))
