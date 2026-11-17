@@ -327,7 +327,7 @@ class PlayerController extends Notifier<PlayerState> {
   /// Finish pending history writes before the update helper closes this process.
   Future<void> prepareForUpdate() async {
     await pause();
-    _telemetry.flush();
+    _telemetry.flush(endSession: false);
     await _telemetry.pendingFlush;
   }
 
@@ -977,7 +977,7 @@ class _TelemetryTracker {
     if (isRepeatOne) _loopCount += 1;
   }
 
-  void flush() {
+  void flush({bool endSession = true}) {
     if (_activeTrackId == null) return;
     onPausedOrStopped();
 
@@ -1052,6 +1052,8 @@ class _TelemetryTracker {
       );
     }
 
+    // Keep the session resumable if the installer cannot be launched.
+    if (!endSession) return;
     _activeTrackId = null;
     _activeTrack = null;
     _playbackSessionId = '';
