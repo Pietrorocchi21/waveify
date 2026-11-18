@@ -178,6 +178,9 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
+      await tester.runAsync(
+        () => container.read(settingsProvider.notifier).init(),
+      );
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,

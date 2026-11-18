@@ -558,8 +558,9 @@ class _LyricsOffsetSection extends ConsumerWidget {
           label: '${lyrics.offsetMs} ms',
           onChanged: (value) => controller.setOffset(value.round()),
         ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             TextButton(
               onPressed: () => controller.setOffset(lyrics.offsetMs - 100),
