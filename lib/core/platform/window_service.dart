@@ -26,13 +26,27 @@ class WindowService {
   static const Size _noLimit = Size(-1, -1);
 
   bool _isOverlay = false;
+  Rect? _previousBounds;
+  bool _previousMaximized = false;
 
   bool get isOverlay => _isOverlay;
 
   Future<void> enterOverlayMode({
     Alignment alignment = Alignment.topRight,
   }) async {
-    if (!isDesktop || _isOverlay) return;
+    if (!isDesktop) return;
+    if (_isOverlay) {
+      await _safe(
+        () async => windowManager.setBounds(await _overlayBounds(alignment)),
+      );
+      return;
+    }
+    _previousMaximized = _isMaximized;
+    if (!_previousMaximized) {
+      await _safe(
+        () async => _previousBounds = await windowManager.getBounds(),
+      );
+    }
     _isOverlay = true;
 
     await _safe(() => windowManager.unmaximize());
@@ -43,6 +57,8 @@ class WindowService {
     );
     await _safe(() => windowManager.setMinimumSize(overlaySize));
     await _safe(() => windowManager.setMaximumSize(overlaySize));
+    await _safe(() => windowManager.setResizable(false));
+    await _safe(() => windowManager.setMaximizable(false));
     await _safe(() => windowManager.setAlwaysOnTop(true));
     await _safe(() => windowManager.setSkipTaskbar(true));
   }
@@ -54,11 +70,16 @@ class WindowService {
     await _safe(() => windowManager.setAlwaysOnTop(false));
     await _safe(() => windowManager.setSkipTaskbar(false));
     await _safe(() => windowManager.setResizable(true));
+    await _safe(() => windowManager.setMaximizable(true));
     await _safe(() => windowManager.setMinimumSize(Size.zero));
     await _safe(() => windowManager.setMaximumSize(_noLimit));
-    await _safe(() async => windowManager.setBounds(await _normalBounds()));
+    await _safe(
+      () async =>
+          windowManager.setBounds(_previousBounds ?? await _normalBounds()),
+    );
     await _safe(() => windowManager.setMinimumSize(minimumSize));
-    await _safe(() => windowManager.center());
+    if (_previousMaximized) await _safe(() => windowManager.maximize());
+    _previousBounds = null;
   }
 
   Future<Rect> _workArea() async {

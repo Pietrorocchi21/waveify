@@ -6,6 +6,8 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/providers/app_providers.dart';
+
 /// The commands a device can send to the other one.
 enum RemoteCommand { none, play, pause, next, previous }
 
@@ -165,6 +167,7 @@ class RemoteController extends Notifier<RemoteState> {
   static const String _channelName = 'realtime-playback';
 
   SupabaseClient? _client;
+  SupabaseClient? _accountClient;
   RealtimeChannel? _channel;
 
   bool _disposed = false;
@@ -188,11 +191,31 @@ class RemoteController extends Notifier<RemoteState> {
         state = state.copyWith(deviceId: id, deviceName: _loadDeviceName(id));
       }
     });
+    final account = ref.read(supabaseClientProvider);
+    _accountClient = account;
+    final subscription = account?.auth.onAuthStateChange.listen((event) {
+      if (event.event == AuthChangeEvent.signedOut &&
+          identical(_client, account)) {
+        unawaited(disconnect());
+      } else if (event.session != null && !state.isAuthenticated) {
+        unawaited(_connectAccount(account));
+      }
+    });
+    if (account?.auth.currentSession != null) {
+      unawaited(Future<void>.microtask(() => _connectAccount(account!)));
+    }
     ref.onDispose(() {
+      if (subscription != null) unawaited(subscription.cancel());
       _disposed = true;
       final client = _client;
       _client = null;
-      if (client != null) unawaited(client.dispose());
+      final channel = _channel;
+      _channel = null;
+      if (client != null && identical(client, _accountClient)) {
+        if (channel != null) unawaited(client.removeChannel(channel));
+      } else if (client != null) {
+        unawaited(client.dispose());
+      }
     });
     return RemoteState(
       isConfigured:
@@ -205,6 +228,34 @@ class RemoteController extends Notifier<RemoteState> {
 
   String _loadDeviceName(String deviceId) =>
       'Waveify ${deviceId.split('-').first}';
+
+  Future<void> _connectAccount(SupabaseClient account) async {
+    await _identityReady;
+    if (_disposed ||
+        state.isConnecting ||
+        state.isAuthenticated ||
+        account.auth.currentSession == null) {
+      return;
+    }
+    final attempt = ++_connectionGeneration;
+    final previousClient = _client;
+    _client = account;
+    state = state.copyWith(isConnecting: true, clearError: true);
+    try {
+      if (previousClient != null && !identical(previousClient, account)) {
+        await previousClient.dispose();
+      }
+      if (_disposed || attempt != _connectionGeneration) return;
+      _connectedAt = DateTime.now().toUtc();
+      _lastCommandId = null;
+      await _listen();
+      if (_disposed || attempt != _connectionGeneration) return;
+      state = state.copyWith(isAuthenticated: true, isConnecting: false);
+    } catch (error) {
+      if (_disposed || attempt != _connectionGeneration) return;
+      state = state.copyWith(isConnecting: false, error: '$error');
+    }
+  }
 
   /// Signs in to the Supabase account that links the devices.
   Future<bool> connect({
@@ -270,9 +321,13 @@ class RemoteController extends Notifier<RemoteState> {
         await client.removeChannel(channel);
       } catch (_) {}
     }
-    try {
-      await _client?.auth.signOut();
-    } catch (_) {}
+    if (identical(client, _accountClient)) {
+      _client = null;
+    } else {
+      try {
+        await client?.auth.signOut(scope: SignOutScope.local);
+      } catch (_) {}
+    }
     if (_disposed) return;
     state = state.copyWith(
       isAuthenticated: false,
@@ -306,7 +361,8 @@ class RemoteController extends Notifier<RemoteState> {
       } catch (_) {}
     }
 
-    final userId = client.auth.currentUser!.id;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) throw StateError('Remote session expired.');
     final channel = client
         .channel(_channelName)
         .onPostgresChanges(
@@ -369,7 +425,7 @@ class RemoteController extends Notifier<RemoteState> {
       final rows = await client
           .from(_table)
           .select('*')
-          .eq('user_id', client.auth.currentUser!.id)
+          .eq('user_id', userId)
           .neq('device_id', state.deviceId)
           .order('updated_at', ascending: false)
           .limit(1);

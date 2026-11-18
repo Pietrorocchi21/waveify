@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:waveify/core/theme/artwork_palette.dart';
 import 'package:waveify/features/player/player_controller.dart';
 import 'package:flutter/material.dart';
@@ -75,23 +76,48 @@ class AppShell extends ConsumerWidget {
     final t = ref.watch(translatorProvider);
     final path = GoRouterState.of(context).uri.path;
     final wide = MediaQuery.sizeOf(context).width >= 900;
-    if (ref.watch(connectivityControllerProvider).visible) {
-      return const Scaffold(body: ConnectivityWall());
-    }
     if (ref.watch(overlayServiceProvider).isOpen) {
       return AmbientBackground(
         accentColor: accent,
-        child: ShortcutScope(
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: WindowDragArea(
-              child: MiniPlayer(
-                onOpen: () => ref.read(overlayServiceProvider.notifier).close(),
+        child: CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.escape): () =>
+                ref.read(overlayServiceProvider.notifier).close(),
+          },
+          child: Focus(
+            autofocus: true,
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              body: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    const WindowDragArea(
+                      child: SizedBox(
+                        width: 25,
+                        height: 72,
+                        child: Icon(Icons.drag_indicator_rounded, size: 19),
+                      ),
+                    ),
+                    const Expanded(
+                      child: Center(child: MiniPlayer(fullControls: true)),
+                    ),
+                    IconButton(
+                      tooltip: t('player.open_player'),
+                      icon: const Icon(Icons.open_in_full_rounded, size: 19),
+                      onPressed: () =>
+                          ref.read(overlayServiceProvider.notifier).close(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       );
+    }
+    if (ref.watch(connectivityControllerProvider).visible) {
+      return const Scaffold(body: ConnectivityWall());
     }
     final main = Column(
       children: [

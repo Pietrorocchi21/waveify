@@ -16,7 +16,11 @@ class OverlayState {
   /// The last error, when the mode could not be applied.
   final String? error;
 
-  OverlayState copyWith({bool? isOpen, String? error, bool clearError = false}) {
+  OverlayState copyWith({
+    bool? isOpen,
+    String? error,
+    bool clearError = false,
+  }) {
     return OverlayState(
       isOpen: isOpen ?? this.isOpen,
       error: clearError ? null : (error ?? this.error),
@@ -30,6 +34,8 @@ class OverlayState {
 /// window of the application shrinks to a small bar that stays in the
 /// foreground. It is toggled with the system shortcut or from the settings.
 class OverlayService extends Notifier<OverlayState> {
+  bool _transitioning = false;
+
   @override
   OverlayState build() {
     // The session decides whether the overlay can stay open.
@@ -57,24 +63,37 @@ class OverlayService extends Notifier<OverlayState> {
 
   /// Opens the overlay.
   Future<void> open() async {
-    if (state.isOpen) return;
+    if (state.isOpen || _transitioning || !WindowService.instance.isDesktop) {
+      return;
+    }
 
     // Without a session there is no player to show.
     if (!ref.read(authControllerProvider).isAuthenticated) return;
 
     final settings = ref.read(settingsProvider);
-    await WindowService.instance.enterOverlayMode(
-      alignment: _alignmentFor(settings),
-    );
-    state = state.copyWith(isOpen: true, clearError: true);
+    _transitioning = true;
+    try {
+      await WindowService.instance.enterOverlayMode(
+        alignment: _alignmentFor(settings),
+      );
+      state = state.copyWith(isOpen: true, clearError: true);
+    } finally {
+      _transitioning = false;
+    }
+    if (!ref.read(authControllerProvider).isAuthenticated) await close();
   }
 
   /// Closes the overlay and gives the window back its size.
   Future<void> close() async {
-    if (!state.isOpen) return;
+    if (!state.isOpen || _transitioning) return;
 
-    await WindowService.instance.exitOverlayMode();
-    state = state.copyWith(isOpen: false);
+    _transitioning = true;
+    try {
+      await WindowService.instance.exitOverlayMode();
+      state = state.copyWith(isOpen: false);
+    } finally {
+      _transitioning = false;
+    }
   }
 
   /// The anchor of the overlay.
@@ -91,5 +110,6 @@ class OverlayService extends Notifier<OverlayState> {
 }
 
 /// The overlay service provider.
-final overlayServiceProvider =
-    NotifierProvider<OverlayService, OverlayState>(OverlayService.new);
+final overlayServiceProvider = NotifierProvider<OverlayService, OverlayState>(
+  OverlayService.new,
+);

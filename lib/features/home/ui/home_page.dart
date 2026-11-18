@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../models/history.dart';
+import '../../../models/playlist.dart';
+import '../../../models/track.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/glass.dart';
 import '../../../shared/widgets/artwork_stage.dart';
@@ -19,6 +21,10 @@ final popularTracksProvider =
     );
 final recentlyPlayedProvider = FutureProvider<PlaybackHistoryResponse>(
   (ref) => ref.watch(apiProvider).getHistory(limit: 12),
+);
+
+final _stageLibraryProvider = FutureProvider<LikedTracksPage>(
+  (ref) => ref.watch(apiProvider).listLikedTracks(limit: 24),
 );
 
 /// The home contains real mixes/history only; empty feeds don't create shelves.
@@ -47,6 +53,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final mixes = ref.watch(dailyMixesProvider);
     final popular = ref.watch(popularTracksProvider(_window));
     final recent = ref.watch(recentlyPlayedProvider);
+    final library = ref.watch(_stageLibraryProvider);
     final playback = ref.watch(
       playerControllerProvider.select(
         (s) => (s.currentTrack, s.queue, s.currentIndex),
@@ -57,9 +64,17 @@ class _HomePageState extends ConsumerState<HomePage> {
     final controller = ref.read(playerControllerProvider.notifier);
     final tracks = playback.$2.isNotEmpty
         ? playback.$2
-        : playback.$1 != null
-        ? [playback.$1!]
-        : popular.asData?.value.items.map((item) => item.track).toList() ?? [];
+        : <String, Track>{
+            (playback.$1?.id ?? ''): ?playback.$1,
+            for (final item
+                in recent.asData?.value.items ?? <PlaybackHistoryItem>[])
+              item.track.id: item.track,
+            for (final (track, _)
+                in library.asData?.value.items ?? <(Track, String)>[])
+              track.id: track,
+            for (final item in popular.asData?.value.items ?? [])
+              item.track.id: item.track,
+          }.values.toList();
     final entries = tracks.isNotEmpty
         ? [
             for (final track in tracks)
@@ -112,10 +127,10 @@ class _HomePageState extends ConsumerState<HomePage> {
             child: Row(
               children: [
                 Text(
-                  'waveify',
+                  'WAVEIFY',
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    letterSpacing: -1,
+                    letterSpacing: 3,
                   ),
                 ),
                 const Spacer(),
@@ -131,39 +146,42 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
           ),
         ),
-        SliverLayoutBuilder(
-          builder: (context, constraints) => SliverToBoxAdapter(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: (constraints.viewportMainAxisExtent - 76).clamp(
-                  0,
-                  double.infinity,
-                ),
+        SliverToBoxAdapter(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, -0.25),
+                radius: 0.83,
+                colors: [
+                  theme.colorScheme.primary.withValues(alpha: 0.13),
+                  Colors.transparent,
+                ],
               ),
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: entries.isEmpty
-                      ? mixes.isLoading || popular.isLoading
-                            ? const LoadingState()
-                            : EmptyState(
-                                icon: Icons.music_note_outlined,
-                                title: t('player.choose_track'),
-                                action: TextButton.icon(
-                                  onPressed: () => context.go('/search'),
-                                  icon: const Icon(Icons.search_rounded),
-                                  label: Text(t('common.sidebar.search')),
-                                ),
-                              )
-                      : ArtworkStage(
-                          key: ValueKey(
-                            entries.map((entry) => entry.id).join('|'),
-                          ),
-                          items: entries,
-                          initialIndex: playback.$3 < 0 ? 0 : playback.$3,
-                          actionLabel: t('common.play'),
+            ),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: entries.isEmpty
+                    ? mixes.isLoading || popular.isLoading
+                          ? const LoadingState()
+                          : EmptyState(
+                              icon: Icons.music_note_outlined,
+                              title: t('player.choose_track'),
+                              action: TextButton.icon(
+                                onPressed: () => context.go('/search'),
+                                icon: const Icon(Icons.search_rounded),
+                                label: Text(t('common.sidebar.search')),
+                              ),
+                            )
+                    : ArtworkStage(
+                        key: ValueKey(
+                          entries.map((entry) => entry.id).join('|'),
                         ),
-                ),
+                        items: entries,
+                        large: true,
+                        initialIndex: playback.$3 < 0 ? 0 : playback.$3,
+                        actionLabel: t('common.play'),
+                      ),
               ),
             ),
           ),

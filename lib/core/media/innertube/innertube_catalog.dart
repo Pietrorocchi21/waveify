@@ -35,28 +35,12 @@ class InnertubeCatalog {
     if (cancelToken?.isCancelled == true) {
       throw cancelToken!.cancelError!;
     }
-    if (type == 'track') {
-      final videos = await client.search
-          .search(query)
-          .timeout(const Duration(seconds: 15));
-      if (cancelToken?.isCancelled == true) {
-        throw cancelToken!.cancelError!;
-      }
-      return [
-        for (final video in videos)
-          SearchItem(
-            type: 'track',
-            id: video.id.value,
-            track: mapVideo(video),
-            title: video.title,
-            cover: Cover(url: video.thumbnails.highResUrl),
-          ),
-      ];
-    }
     final result = await client.search
         .searchContent(
           query,
-          filter: type == 'artist'
+          filter: type == 'track'
+              ? yt.TypeFilters.video
+              : type == 'artist'
               ? yt.TypeFilters.channel
               : type == 'playlist' || type == 'album'
               ? yt.TypeFilters.playlist
@@ -92,7 +76,7 @@ class InnertubeCatalog {
                   : item.thumbnails.last.url.toString(),
             ),
           )
-        else if (item is yt.SearchPlaylist)
+        else if (type != 'track' && item is yt.SearchPlaylist)
           SearchItem(
             type: type == 'album' ? 'album' : 'playlist',
             id: item.id.value,
@@ -103,7 +87,7 @@ class InnertubeCatalog {
                   : item.thumbnails.last.url.toString(),
             ),
           )
-        else if (item is yt.SearchChannel)
+        else if (type != 'track' && item is yt.SearchChannel)
           SearchItem(
             type: 'artist',
             id: item.id.value,

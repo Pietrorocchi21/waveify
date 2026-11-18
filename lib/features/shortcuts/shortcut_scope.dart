@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -40,9 +41,25 @@ class ShortcutScope extends ConsumerWidget {
       bindings[activator] = () => _run(context, ref, player, binding.action);
     }
 
-    return CallbackShortcuts(
-      bindings: bindings,
-      child: Focus(autofocus: true, child: child),
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (_, event) {
+        final focused = FocusManager.instance.primaryFocus?.context;
+        if (focused != null &&
+            (focused.widget is EditableText ||
+                focused.findAncestorWidgetOfExactType<EditableText>() !=
+                    null)) {
+          return KeyEventResult.ignored;
+        }
+        for (final entry in bindings.entries) {
+          if (entry.key.accepts(event, HardwareKeyboard.instance)) {
+            entry.value();
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: child,
     );
   }
 
