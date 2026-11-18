@@ -8,7 +8,7 @@ on:
       operation:
         description: Backend operation (restore is intentionally local only)
         type: choice
-        options: [status, auth-diagnostics, auth-redirect, deploy, verify-live, backup]
+        options: [status, auth-diagnostics, auth-fix-brevo-port, auth-redirect, deploy, verify-live, backup]
         default: status
       supabase_url:
         description: Public Supabase project URL
@@ -68,6 +68,9 @@ jobs:
       - name: Diagnose SMTP configuration and sanitized auth errors
         if: inputs.operation == 'auth-diagnostics'
         run: python -m tool.backend.manage auth-diagnostics
+      - name: Correct verified Brevo SMTP port typo and check handshake
+        if: inputs.operation == 'auth-fix-brevo-port'
+        run: python -m tool.backend.manage auth-fix-brevo-port
       - name: Configure verified email confirmation redirect
         if: inputs.operation == 'auth-redirect'
         run: python -m tool.backend.manage auth-redirect

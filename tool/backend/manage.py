@@ -412,7 +412,7 @@ def restore(db, archive, passphrase, identities, storage=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['status', 'auth-diagnostics', 'auth-redirect', 'deploy', 'bundle', 'backup', 'inspect', 'restore'])
+    parser.add_argument('operation', choices=['status', 'auth-diagnostics', 'auth-fix-brevo-port', 'auth-redirect', 'deploy', 'bundle', 'backup', 'inspect', 'restore'])
     parser.add_argument('--output')
     parser.add_argument('--archive')
     parser.add_argument('--identity-map')
@@ -426,11 +426,19 @@ def main():
             print(json.dumps(inspect_backup(args.archive, os.environ.get('WAVEIFY_BACKUP_PASSPHRASE', ''))))
             return
         db = configured_database()
-        if args.operation == 'auth-diagnostics':
+        if args.operation in ('auth-diagnostics', 'auth-fix-brevo-port'):
             if not isinstance(db, ManagementDatabase):
                 raise BackendError('Supabase management access is required.')
             auth = db.api('/config/auth')
             host = str(auth.get('smtp_host') or '').strip()
+            if args.operation == 'auth-fix-brevo-port':
+                if host != 'smtp-relay.brevo.com' or str(auth.get('smtp_port')) not in ('589', '587'):
+                    raise BackendError('Expected Brevo configuration with mistyped port 589 or corrected port 587.')
+                db.api('/config/auth', {'smtp_port': '587'}, method='PATCH')
+                auth = db.api('/config/auth')
+                if str(auth.get('smtp_port')) != '587':
+                    raise BackendError('SMTP port correction did not persist.')
+
             report = {'smtp_host_is_brevo': host == 'smtp-relay.brevo.com',
                       'smtp_port': auth.get('smtp_port'),
                       'smtp_user_present': bool(auth.get('smtp_user')),
