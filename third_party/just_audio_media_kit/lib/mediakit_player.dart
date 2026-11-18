@@ -143,17 +143,36 @@ class MediaKitPlayer extends AudioPlayerPlatform {
       }),
       _player.stream.error.listen((error) {
         final errorUri = RegExp(r'Failed to open (.*)\.').firstMatch(error)?[1];
+        final load = _loadCompleter;
+        if (load != null && !load.isCompleted) {
+          // The stream also carries recoverable FFmpeg connection/decoder logs.
+          // Only an explicit open failure should complete the pending request.
+          final currentUri = _currentMedia?.uri;
+          final normalized = error.toLowerCase();
+          final local = currentUri != null &&
+              (currentUri.startsWith('file:') ||
+                  RegExp(r'^[A-Za-z]:[\\/]').hasMatch(currentUri) ||
+                  currentUri.startsWith('/'));
+          final failed = normalized.startsWith('failed to open ') ||
+              (local &&
+                  (normalized.contains('no such file') ||
+                      normalized.contains('cannot find the file')));
+          if (failed && (errorUri == null || errorUri == currentUri || local)) {
+            _processingState = ProcessingStateMessage.idle;
+            _errorCode = kErrorCode;
+            _errorMessage = 'Native audio source could not be opened.';
+            load.completeError(PlatformException(
+              code: kErrorCode.toString(),
+              message: _errorMessage,
+            ));
+            _updatePlaybackEvent();
+          }
+          return;
+        }
         if (errorUri == null || errorUri == _currentMedia?.uri) {
           _processingState = ProcessingStateMessage.idle;
           _errorCode = kErrorCode;
           _errorMessage = error;
-          final load = _loadCompleter;
-          if (load != null && !load.isCompleted) {
-            load.completeError(PlatformException(
-              code: kErrorCode.toString(),
-              message: 'Native audio source could not be opened.',
-            ));
-          }
           _updatePlaybackEvent();
         }
         _logger.severe('ERROR OCCURRED: $error');
