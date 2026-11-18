@@ -412,7 +412,7 @@ def restore(db, archive, passphrase, identities, storage=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['status', 'auth-redirect', 'deploy', 'bundle', 'backup', 'inspect', 'restore'])
+    parser.add_argument('operation', choices=['status', 'auth-diagnostics', 'auth-redirect', 'deploy', 'bundle', 'backup', 'inspect', 'restore'])
     parser.add_argument('--output')
     parser.add_argument('--archive')
     parser.add_argument('--identity-map')
@@ -426,6 +426,36 @@ def main():
             print(json.dumps(inspect_backup(args.archive, os.environ.get('WAVEIFY_BACKUP_PASSPHRASE', ''))))
             return
         db = configured_database()
+        if args.operation == 'auth-diagnostics':
+            if not isinstance(db, ManagementDatabase):
+                raise BackendError('Supabase management access is required.')
+            auth = db.api('/config/auth')
+            host = str(auth.get('smtp_host') or '').strip()
+            report = {'smtp_host_is_brevo': host == 'smtp-relay.brevo.com',
+                      'smtp_port': auth.get('smtp_port'),
+                      'smtp_user_present': bool(auth.get('smtp_user')),
+                      'smtp_password_present': bool(auth.get('smtp_pass')),
+                      'sender_email_present': bool(auth.get('smtp_admin_email')),
+                      'email_confirmation_required': not auth.get('mailer_autoconfirm', False)}
+            query = 'select timestamp, event_message from auth_logs order by timestamp desc limit 50'
+            try:
+                logs = db.api('/analytics/endpoints/logs.all?sql=' + quote(query, safe=''))
+                rows = logs.get('result', []) if isinstance(logs, dict) else logs
+                # Raw auth logs can contain email addresses, tokens and IPs. Only emit fixed labels.
+                markers = {'timeout': ('timeout', 'timed out', 'deadline exceeded'),
+                           'smtp_failure': ('smtp', 'sending confirmation', 'sending email'),
+                           'credentials_rejected': ('authentication failed', '535', 'invalid login'),
+                           'sender_rejected': ('sender is not', 'sender not', 'sender rejected', 'not verified'),
+                           'connection_failure': ('connection refused', 'no such host', 'network is unreachable'),
+                           'rate_limit': ('rate limit', 'too many requests')}
+                report['recent_auth_log_rows'] = len(rows or [])
+                report['log_categories'] = {label: sum(any(marker in str(row).lower() for marker in values)
+                                                      for row in (rows or []))
+                                            for label, values in markers.items()}
+            except BackendError:
+                report['auth_logs_available'] = False
+            print(json.dumps(report))
+            return
         if args.operation == 'auth-redirect':
             if not isinstance(db, ManagementDatabase):
                 raise BackendError('Supabase management access is required.')
