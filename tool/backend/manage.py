@@ -14,7 +14,7 @@ import sys
 import tarfile
 import tempfile
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlparse, parse_qs
+from urllib.parse import quote, urlencode, urlparse, parse_qs
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -470,13 +470,20 @@ def main():
                 report['smtp_handshake'] = 'connection_or_protocol_failure'
             query = 'select timestamp, event_message, metadata from auth_logs order by timestamp desc limit 50'
             try:
-                logs = db.api('/analytics/endpoints/logs.all?sql=' + quote(query, safe=''))
+                from datetime import datetime, timedelta, timezone
+                now = datetime.now(timezone.utc)
+                params = urlencode({
+                    'sql': query,
+                    'iso_timestamp_start': (now - timedelta(hours=3)).isoformat(),
+                    'iso_timestamp_end': now.isoformat(),
+                })
+                logs = db.api('/analytics/endpoints/logs.all?' + params)
                 rows = logs.get('result', []) if isinstance(logs, dict) else logs
                 # Raw auth logs can contain email addresses, tokens and IPs. Only emit fixed labels.
                 markers = {'timeout': ('timeout', 'timed out', 'deadline exceeded'),
                            'smtp_failure': ('smtp', 'sending confirmation', 'sending email'),
                            'credentials_rejected': ('authentication failed', '535', 'invalid login'),
-                           'sender_rejected': ('sender is not', 'sender not', 'sender rejected', 'not verified'),
+                           'sender_rejected': ('sender is not', 'sender not', 'sender rejected', 'not verified', 'sender address rejected', 'sender domain'),
                            'connection_failure': ('connection refused', 'no such host', 'network is unreachable'),
                            'rate_limit': ('rate limit', 'too many requests')}
                 report['recent_auth_log_rows'] = len(rows or [])
