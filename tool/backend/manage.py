@@ -429,6 +429,15 @@ def main():
             report = {'admin_configured': db is not None}
             if isinstance(db, ManagementDatabase):
                 report['organization_plan'] = db.organization_plan()
+                auth = db.api('/config/auth')
+                report['auth'] = {
+                    'email_confirmation_required': not auth.get('mailer_autoconfirm', False),
+                    'custom_smtp_configured': bool(auth.get('smtp_host')),
+                    'site_url': auth.get('site_url'),
+                    'redirect_allow_list': auth.get('uri_allow_list'),
+                    'email_rate_limit_per_hour': auth.get('rate_limit_email_sent'),
+                    'signup_disabled': auth.get('disable_signup'),
+                }
             if db is not None:
                 try:
                     report.update(health(db))
