@@ -43,6 +43,10 @@ Future<void> main(List<String> args) async {
       output == null
           ? 'waveify-self-test.json'
           : output.substring('--self-test-output='.length),
+      videoPath: args
+          .where((arg) => arg.startsWith('--self-test-video='))
+          .firstOrNull
+          ?.substring('--self-test-video='.length),
     );
     exit(ok ? 0 : 1);
   }

@@ -10,11 +10,7 @@ import '../../core/providers/app_providers.dart';
 
 /// The decoration of one of the blocks of the interface.
 class BlockCustomization {
-  const BlockCustomization({
-    this.opacity = 100,
-    this.blur = 0,
-    this.dim = 0,
-  });
+  const BlockCustomization({this.opacity = 100, this.blur = 0, this.dim = 0});
 
   /// The opacity of the block, between 0 and 100.
   final int opacity;
@@ -91,8 +87,9 @@ class CustomizationState {
     BlockCustomization? miniplayer,
   }) {
     return CustomizationState(
-      wallpaperPath:
-          clearWallpaper ? null : (wallpaperPath ?? this.wallpaperPath),
+      wallpaperPath: clearWallpaper
+          ? null
+          : (wallpaperPath ?? this.wallpaperPath),
       wallpaperBlur: wallpaperBlur ?? this.wallpaperBlur,
       wallpaperDim: wallpaperDim ?? this.wallpaperDim,
       sidebar: sidebar ?? this.sidebar,
@@ -225,24 +222,28 @@ class CustomizationController extends Notifier<CustomizationState> {
 /// The customization controller provider.
 final customizationControllerProvider =
     NotifierProvider<CustomizationController, CustomizationState>(
-  CustomizationController.new,
-);
+      CustomizationController.new,
+    );
 
 /// Draws the wallpaper behind the interface.
 class WallpaperBackground extends ConsumerWidget {
-  const WallpaperBackground({super.key, required this.child});
+  const WallpaperBackground({super.key, required this.child, this.fallback});
 
   final Widget child;
+  final Widget? fallback;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final customization = ref.watch(customizationControllerProvider);
     final path = customization.wallpaperPath;
 
-    if (path == null || path.isEmpty) return child;
+    if (path == null || path.isEmpty || !File(path).existsSync()) {
+      final backdrop = fallback;
+      if (backdrop == null) return child;
+      return Stack(fit: StackFit.expand, children: [backdrop, child]);
+    }
 
     final file = File(path);
-    if (!file.existsSync()) return child;
 
     return Stack(
       fit: StackFit.expand,
@@ -269,11 +270,7 @@ class WallpaperBackground extends ConsumerWidget {
 /// Applies the decoration of a block: the opacity of the content and the
 /// blur and the darkening of what is behind it.
 class DecoratedBlock extends ConsumerWidget {
-  const DecoratedBlock({
-    super.key,
-    required this.block,
-    required this.child,
-  });
+  const DecoratedBlock({super.key, required this.block, required this.child});
 
   final CustomizationBlock block;
   final Widget child;

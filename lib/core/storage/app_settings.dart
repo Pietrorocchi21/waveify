@@ -58,6 +58,7 @@ class AppSettings {
     this.wallpaperPath,
     this.wallpaperBlur = 0,
     this.wallpaperDim = 0,
+    this.videoBackdrop = true,
     this.sidebarDecoration = const BlockCustomization(),
     this.contentDecoration = const BlockCustomization(),
     this.miniplayerDecoration = const BlockCustomization(),
@@ -97,6 +98,7 @@ class AppSettings {
   final String? wallpaperPath;
   final int wallpaperBlur;
   final int wallpaperDim;
+  final bool videoBackdrop;
   final BlockCustomization sidebarDecoration;
   final BlockCustomization contentDecoration;
   final BlockCustomization miniplayerDecoration;
@@ -155,6 +157,7 @@ class AppSettings {
         wallpaperPath: map['wallpaperPath'] as String?,
         wallpaperBlur: (map['wallpaperBlur'] as num?)?.round() ?? 0,
         wallpaperDim: (map['wallpaperDim'] as num?)?.round() ?? 0,
+        videoBackdrop: map['videoBackdrop'] != false,
         sidebarDecoration: _decodeBlock(map['sidebarDecoration']),
         contentDecoration: _decodeBlock(map['contentDecoration']),
         miniplayerDecoration: _decodeBlock(map['miniplayerDecoration']),
@@ -195,6 +198,7 @@ class AppSettings {
     bool clearWallpaper = false,
     int? wallpaperBlur,
     int? wallpaperDim,
+    bool? videoBackdrop,
     BlockCustomization? sidebarDecoration,
     BlockCustomization? contentDecoration,
     BlockCustomization? miniplayerDecoration,
@@ -234,6 +238,7 @@ class AppSettings {
           : (wallpaperPath ?? this.wallpaperPath),
       wallpaperBlur: wallpaperBlur ?? this.wallpaperBlur,
       wallpaperDim: wallpaperDim ?? this.wallpaperDim,
+      videoBackdrop: videoBackdrop ?? this.videoBackdrop,
       sidebarDecoration: sidebarDecoration ?? this.sidebarDecoration,
       contentDecoration: contentDecoration ?? this.contentDecoration,
       miniplayerDecoration: miniplayerDecoration ?? this.miniplayerDecoration,
@@ -274,6 +279,7 @@ class AppSettings {
           'wallpaperPath': wallpaperPath,
           'wallpaperBlur': wallpaperBlur,
           'wallpaperDim': wallpaperDim,
+          'videoBackdrop': videoBackdrop,
           'sidebarDecoration': _encodeBlock(sidebarDecoration),
           'contentDecoration': _encodeBlock(contentDecoration),
           'miniplayerDecoration': _encodeBlock(miniplayerDecoration),

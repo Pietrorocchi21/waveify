@@ -9,13 +9,15 @@ $output = (Resolve-Path $OutputDirectory).Path
 $report = Join-Path $output 'self-test.json'
 $process = $null
 try {
-    $process = Start-Process -FilePath $exe -ArgumentList '--self-test', "--self-test-output=$report" -PassThru
+    $video = (Resolve-Path (Join-Path $PSScriptRoot '../test/support/media/moving-pattern.mp4')).Path
+    $process = Start-Process -FilePath $exe -ArgumentList '--self-test', "--self-test-output=$report", ('--self-test-video="{0}"' -f $video) -PassThru
     if (-not $process.WaitForExit(60000)) { throw 'Native self-test timed out after 60 seconds' }
     if ($process.ExitCode -ne 0) { throw "Native self-test exited with $($process.ExitCode)" }
     if (-not (Test-Path $report)) { throw 'Native self-test did not write its JSON report' }
     $result = Get-Content $report -Raw | ConvertFrom-Json
     if ($result.cloud_configured -ne $true) { throw 'Windows release is missing public cloud configuration for online accounts' }
     if ($result.status -ne 'passed') { throw "Native self-test did not pass: $(Get-Content $report -Raw)" }
+    if ($result.checks.native_muted_video -ne 'passed') { throw 'Native muted video playback failed' }
     $frameReport = Join-Path $output 'first-frame.json'
     Remove-Item $frameReport -ErrorAction SilentlyContinue
     $process = Start-Process -FilePath $exe -ArgumentList "--startup-report=$frameReport" -PassThru

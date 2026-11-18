@@ -31,7 +31,7 @@ class CatalogService {
         {'https', 'http'}.contains(uri.scheme) &&
         uri.host.isNotEmpty &&
         RegExp(
-          r'\.(mp3|m4a|aac|wav|flac|ogg|opus|webm)$',
+          r'\.(mp3|m4a|mp4|aac|wav|flac|ogg|opus|webm)$',
           caseSensitive: false,
         ).hasMatch(uri.path)) {
       final title = uri.pathSegments.isEmpty ? uri.host : uri.pathSegments.last;

@@ -1,3 +1,6 @@
+import 'playback_video_backdrop.dart';
+import 'listening_room.dart';
+import '../features/library/library_controller.dart';
 import '../shared/widgets/waveify_brand.dart';
 
 import 'package:flutter/services.dart';
@@ -77,7 +80,13 @@ class AppShell extends ConsumerWidget {
     final accent = ref.watch(ambientAccentProvider);
     final t = ref.watch(translatorProvider);
     final path = GoRouterState.of(context).uri.path;
-    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final width = MediaQuery.sizeOf(context).width;
+    final wide = width >= 900;
+    final room = width >= 1120;
+    final showQueue =
+        room &&
+        path == '/' &&
+        ref.watch(playerControllerProvider.select((s) => s.queue.isNotEmpty));
     if (ref.watch(overlayServiceProvider).isOpen) {
       return AmbientBackground(
         accentColor: accent,
@@ -135,100 +144,132 @@ class AppShell extends ConsumerWidget {
           ),
         const UpdateNotice(),
         Expanded(
-          child: DecoratedBlock(
-            block: CustomizationBlock.contentView,
-            child: child,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (wide)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 8, 0, 12),
+                  child: SizedBox(
+                    width: room ? (width * .155).clamp(180.0, 230.0) : 64,
+                    child: GlassPanel(
+                      borderRadius: 24,
+                      borderOpacity: .18,
+                      padding: room
+                          ? const EdgeInsets.symmetric(horizontal: 10)
+                          : null,
+                      child: _SideNavigation(path: path, expanded: room),
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: DecoratedBlock(
+                  block: CustomizationBlock.contentView,
+                  child: child,
+                ),
+              ),
+              if (showQueue)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 12, 18, 12),
+                  child: SizedBox(
+                    width: (width * .212).clamp(235.0, 330.0),
+                    child: const ListeningRoomQueue(),
+                  ),
+                ),
+            ],
           ),
         ),
-        const _MiniPlayerWrapper(),
+        if (room)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(34, 2, 34, 18),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1500),
+                child: const ListeningRoomDock(),
+              ),
+            ),
+          )
+        else
+          const _MiniPlayerWrapper(),
       ],
     );
     return AmbientBackground(
       accentColor: accent,
       child: WallpaperBackground(
-        child: ShortcutScope(
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SafeArea(
-              bottom: false,
-              child: Row(
-                children: [
-                  if (wide)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 0, 16),
-                      child: DecoratedBlock(
-                        block: CustomizationBlock.sidebar,
-                        child: SizedBox(
-                          width: 64,
-                          child: _SideNavigation(path: path),
+        fallback: Theme.of(context).brightness == Brightness.dark
+            ? const _ListeningBackdrop()
+            : null,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const PlaybackVideoBackdrop(),
+            ShortcutScope(
+              child: Scaffold(
+                backgroundColor: Colors.transparent,
+                body: SafeArea(bottom: false, child: main),
+                bottomNavigationBar: wide
+                    ? null
+                    : GlassPanel(
+                        borderRadius: 0,
+                        blur: 16,
+                        padding: EdgeInsets.zero,
+                        child: SafeArea(
+                          top: false,
+                          child: NavigationBar(
+                            height: 68,
+                            selectedIndex: path == '/'
+                                ? 0
+                                : path.startsWith('/search')
+                                ? 1
+                                : path.startsWith('/library')
+                                ? 2
+                                : 3,
+                            onDestinationSelected: (index) {
+                              if (index < 3) {
+                                context.go(appDestinations[index].route);
+                                return;
+                              }
+                              showModalBottomSheet<void>(
+                                context: context,
+                                builder: (sheetContext) => GlassSheet(
+                                  maxHeight: 280,
+                                  padding: const EdgeInsets.all(16),
+                                  child: ListView(
+                                    children: [
+                                      for (final destination
+                                          in appDestinations.skip(3))
+                                        ListTile(
+                                          leading: Icon(destination.icon),
+                                          title: Text(t(destination.labelKey)),
+                                          onTap: () {
+                                            Navigator.pop(sheetContext);
+                                            context.go(destination.route);
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                            destinations: [
+                              for (final destination in appDestinations.take(3))
+                                NavigationDestination(
+                                  icon: Icon(destination.icon),
+                                  selectedIcon: Icon(destination.activeIcon),
+                                  label: t(destination.labelKey),
+                                ),
+                              NavigationDestination(
+                                icon: const Icon(Icons.more_horiz_rounded),
+                                label: MaterialLocalizations.of(context)
+                                    .moreButtonTooltip,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  Expanded(child: main),
-                ],
               ),
             ),
-            bottomNavigationBar: wide
-                ? null
-                : GlassPanel(
-                    borderRadius: 0,
-                    blur: 16,
-                    padding: EdgeInsets.zero,
-                    child: SafeArea(
-                      top: false,
-                      child: NavigationBar(
-                        height: 68,
-                        selectedIndex: path == '/'
-                            ? 0
-                            : path.startsWith('/search')
-                            ? 1
-                            : path.startsWith('/library')
-                            ? 2
-                            : 3,
-                        onDestinationSelected: (index) {
-                          if (index < 3) {
-                            context.go(appDestinations[index].route);
-                            return;
-                          }
-                          showModalBottomSheet<void>(
-                            context: context,
-                            builder: (sheetContext) => GlassSheet(
-                              maxHeight: 280,
-                              padding: const EdgeInsets.all(16),
-                              child: ListView(
-                                children: [
-                                  for (final destination
-                                      in appDestinations.skip(3))
-                                    ListTile(
-                                      leading: Icon(destination.icon),
-                                      title: Text(t(destination.labelKey)),
-                                      onTap: () {
-                                        Navigator.pop(sheetContext);
-                                        context.go(destination.route);
-                                      },
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                        destinations: [
-                          for (final destination in appDestinations.take(3))
-                            NavigationDestination(
-                              icon: Icon(destination.icon),
-                              selectedIcon: Icon(destination.activeIcon),
-                              label: t(destination.labelKey),
-                            ),
-                          NavigationDestination(
-                            icon: const Icon(Icons.more_horiz_rounded),
-                            label: MaterialLocalizations.of(context)
-                                .moreButtonTooltip,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-          ),
+          ],
         ),
       ),
     );
@@ -268,12 +309,67 @@ class _MiniPlayerWrapper extends ConsumerWidget {
 }
 
 class _SideNavigation extends ConsumerWidget {
-  const _SideNavigation({required this.path});
+  const _SideNavigation({required this.path, required this.expanded});
   final String path;
+  final bool expanded;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final t = ref.watch(translatorProvider);
+    if (expanded) {
+      final playlists = ref.watch(
+        libraryControllerProvider.select((s) => s.playlists),
+      );
+      return ListView(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        children: [
+          Center(
+            child: TextButton(
+              onPressed: () => context.go('/'),
+              child: const WaveifyWordmark(stacked: true),
+            ),
+          ),
+          const SizedBox(height: 24),
+          for (final destination in appDestinations.take(3))
+            _navigationTile(context, destination, t(destination.labelKey)),
+          if (playlists.isNotEmpty) ...[
+            const Divider(height: 28),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Text(
+                t('home.your_playlists'),
+                style: theme.textTheme.labelLarge,
+              ),
+            ),
+            for (final playlist in playlists)
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.queue_music_rounded, size: 20),
+                title: Text(
+                  playlist.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () => context.push(
+                  Uri(
+                    path: '/library/playlist',
+                    queryParameters: {'id': playlist.id},
+                  ).toString(),
+                ),
+              ),
+          ],
+          const Divider(height: 28),
+          for (final destination in appDestinations.skip(3))
+            _navigationTile(context, destination, t(destination.labelKey)),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.person_outline_rounded, size: 22),
+            title: Text(t('profile.title')),
+            onTap: () => context.push('/profile'),
+          ),
+        ],
+      );
+    }
     return Column(
       children: [
         Padding(
@@ -329,4 +425,56 @@ class _SideNavigation extends ConsumerWidget {
       ],
     );
   }
+
+  Widget _navigationTile(
+    BuildContext context,
+    AppDestination destination,
+    String label,
+  ) {
+    final selected = destination.route == '/'
+        ? path == '/'
+        : path.startsWith(destination.route);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: ListTile(
+        dense: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+        selected: selected,
+        selectedTileColor: Theme.of(context).colorScheme.primary
+            .withValues(alpha: .18),
+        leading: Icon(
+          selected ? destination.activeIcon : destination.icon,
+          size: 22,
+        ),
+        title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        onTap: () => context.go(destination.route),
+      ),
+    );
+  }
+}
+
+class _ListeningBackdrop extends StatelessWidget {
+  const _ListeningBackdrop();
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      Image.asset(
+        'assets/images/listening-room.webp',
+        fit: BoxFit.cover,
+        excludeFromSemantics: true,
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      ),
+      const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0x66101529), Color(0xA6192036), Color(0x73101A2E)],
+          ),
+        ),
+      ),
+    ],
+  );
 }

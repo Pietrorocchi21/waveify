@@ -61,7 +61,9 @@ class _HomePageState extends ConsumerState<HomePage> {
         (s) => (s.currentTrack, s.queue, s.currentIndex),
       ),
     );
-    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final width = MediaQuery.sizeOf(context).width;
+    final wide = width >= 900;
+    final room = width >= 1120;
     final inset = wide ? 36.0 : 20.0;
     final controller = ref.read(playerControllerProvider.notifier);
     final tracks = playback.$2.isNotEmpty
@@ -126,20 +128,40 @@ class _HomePageState extends ConsumerState<HomePage> {
         SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.fromLTRB(inset, 20, inset, 12),
-            child: Row(
-              children: [
-                const WaveifyWordmark(),
-                const Spacer(),
-                Flexible(
-                  child: Text(
-                    greeting,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall,
+            child: room
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        t('home.room_title'),
+                        style: theme.textTheme.displaySmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        t('home.room_subtitle'),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      const WaveifyWordmark(),
+                      const Spacer(),
+                      Flexible(
+                        child: Text(
+                          greeting,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
           ),
         ),
         SliverToBoxAdapter(
@@ -174,13 +196,80 @@ class _HomePageState extends ConsumerState<HomePage> {
                           entries.map((entry) => entry.id).join('|'),
                         ),
                         items: entries,
-                        large: true,
+                        large: !room,
+                        captionOnArtwork: room,
                         initialIndex: playback.$3 < 0 ? 0 : playback.$3,
                         actionLabel: t('common.play'),
                       ),
               ),
             ),
           ),
+        ),
+        recent.when(
+          loading: () => const SliverToBoxAdapter(),
+          error: (error, stack) => SliverToBoxAdapter(
+            child: ErrorState(
+              message: '',
+              onRetry: () => ref.invalidate(recentlyPlayedProvider),
+            ),
+          ),
+          data: (data) => data.items.isEmpty
+              ? const SliverToBoxAdapter()
+              : SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SectionTitle(title: t('home.recent_listening')),
+                      SizedBox(
+                        height: room ? 228 : 210,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: EdgeInsets.symmetric(horizontal: inset),
+                          itemCount: data.items.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 16),
+                          itemBuilder: (context, index) {
+                            final track = data.items[index].track;
+                            return SizedBox(
+                              width: room ? 166 : 144,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () => ref
+                                    .read(playerControllerProvider.notifier)
+                                    .playTrack(
+                                      track,
+                                      context: 'library:recent',
+                                    ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    GlassCover(
+                                      url: track.coverUrl,
+                                      size: room ? 166 : 144,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      track.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.titleSmall,
+                                    ),
+                                    Text(
+                                      track.artists,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
         ),
         mixes.when(
           loading: () => const SliverToBoxAdapter(),
@@ -307,69 +396,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                         index: index,
                       ),
                     ),
-                  ),
-                ),
-        ),
-        recent.when(
-          loading: () => const SliverToBoxAdapter(),
-          error: (error, stack) => SliverToBoxAdapter(
-            child: ErrorState(
-              message: '',
-              onRetry: () => ref.invalidate(recentlyPlayedProvider),
-            ),
-          ),
-          data: (data) => data.items.isEmpty
-              ? const SliverToBoxAdapter()
-              : SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _SectionTitle(title: t('home.jumpBackIn')),
-                      SizedBox(
-                        height: 210,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          padding: EdgeInsets.symmetric(horizontal: inset),
-                          itemCount: data.items.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(width: 16),
-                          itemBuilder: (context, index) {
-                            final track = data.items[index].track;
-                            return SizedBox(
-                              width: 144,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: () => ref
-                                    .read(playerControllerProvider.notifier)
-                                    .playTrack(
-                                      track,
-                                      context: 'library:recent',
-                                    ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    GlassCover(url: track.coverUrl, size: 144),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      track.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.titleSmall,
-                                    ),
-                                    Text(
-                                      track.artists,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.bodySmall,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
                   ),
                 ),
         ),

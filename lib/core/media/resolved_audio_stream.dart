@@ -6,14 +6,19 @@ class ResolvedAudioStream {
     required this.mimeType,
     this.durationMs = 0,
     this.headers = const {},
+    this.videoUrl,
   });
   final String url, mimeType;
+  final String? videoUrl;
   final int durationMs;
   final Map<String, String> headers;
   factory ResolvedAudioStream.local(String path, {int durationMs = 0}) =>
       ResolvedAudioStream(
         url: File(path).uri.toString(),
         mimeType: audioMimeFor(path),
+        videoUrl: path.toLowerCase().endsWith('.mp4')
+            ? File(path).uri.toString()
+            : null,
         durationMs: durationMs,
       );
 }

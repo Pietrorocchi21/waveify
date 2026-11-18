@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waveify/app.dart';
 import 'package:waveify/app/router.dart';
+import 'package:waveify/app/listening_room.dart';
 import 'package:waveify/core/providers/app_providers.dart';
 import 'package:waveify/features/auth/auth_controller.dart';
 import 'package:waveify/features/downloads/downloads_controller.dart';
@@ -197,8 +198,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await capture(tester, 'home-${size.width.toInt()}');
-      final dock = find.byType(MiniPlayer);
+      final desktopRoom = size.width >= 1120;
+      final dock = desktopRoom
+          ? find.byType(ListeningRoomDock)
+          : find.byType(MiniPlayer);
       expect(dock, findsOneWidget);
+      expect(
+        find.byType(ListeningRoomQueue),
+        desktopRoom ? findsOneWidget : findsNothing,
+      );
       // Dock occupies layout space; content cannot extend behind it.
       final scroll = find.byType(CustomScrollView).first;
       expect(
@@ -213,9 +221,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(container.read(playerControllerProvider).isPlaying, isTrue);
-      final timeline = find
-          .descendant(of: dock, matching: find.byType(Slider))
-          .last;
+      final sliders = find.descendant(of: dock, matching: find.byType(Slider));
+      final timeline = desktopRoom ? sliders.first : sliders.last;
       await tester.tap(timeline);
       await tester.pumpAndSettle();
       expect(
@@ -223,9 +230,7 @@ void main() {
         greaterThan(74),
       );
       if (size.width >= 900) {
-        await tester.tap(
-          find.descendant(of: dock, matching: find.byType(Slider)).first,
-        );
+        await tester.tap(desktopRoom ? sliders.last : sliders.first);
         await tester.pumpAndSettle();
         expect(container.read(playerControllerProvider).volume, lessThan(1));
       }
@@ -295,7 +300,7 @@ void main() {
       router.go('/');
       await tester.pumpAndSettle();
       // The queue has unique row keys and remains usable with multiple tracks.
-      final context = tester.element(find.byType(MiniPlayer));
+      final context = tester.element(dock);
       showModalBottomSheet<void>(
         context: context,
         builder: (_) => Consumer(

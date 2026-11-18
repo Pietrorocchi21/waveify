@@ -276,6 +276,11 @@ class PlayerController extends Notifier<PlayerState> {
           .timeout(const Duration(seconds: 25));
       if (state.currentTrack?.id != track.id) return;
       openingAudio = true;
+      state = state.copyWith(
+        backdropVideoUrl: stream.videoUrl,
+        backdropVideoHeaders: stream.headers,
+        clearBackdropVideo: stream.videoUrl == null,
+      );
       final mediaItem = MediaItem(
         id: track.id,
         title: track.title,

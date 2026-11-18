@@ -195,6 +195,10 @@
     "download_offline": "Scarica per l'offline"
   },
   "home": {
+    "room_title": "Lasciati trasportare.",
+    "room_subtitle": "La colonna sonora del tuo momento.",
+    "recent_listening": "Ascoltati di recente",
+    "your_playlists": "Le tue playlist",
     "speedDial": "Accesso rapido",
     "goodMorning": "Buongiorno",
     "goodAfternoon": "Buon pomeriggio",
@@ -592,6 +596,8 @@
       }
     },
     "customization": {
+      "video_backdrop": "Video musicale come sfondo",
+      "video_backdrop_desc": "Mostra il video musicale dietro al player durante la riproduzione, quando disponibile.",
       "description": "Sfondo della finestra, trasparenza ed effetti di sfocatura dei blocchi.",
       "apply_to_overlay": "Applica al mini player in overlay",
       "apply_to_overlay_desc": "Usa lo sfondo personalizzato e l'effetto vetro anche sul mini player mobile.",

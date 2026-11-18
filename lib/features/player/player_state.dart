@@ -24,6 +24,8 @@ class PlayerState {
     this.playbackContext,
     this.playbackContextCover,
     this.error,
+    this.backdropVideoUrl,
+    this.backdropVideoHeaders = const {},
   });
 
   final PlayerStatus status;
@@ -43,6 +45,8 @@ class PlayerState {
   final String? playbackContext;
   final String? playbackContextCover;
   final String? error;
+  final String? backdropVideoUrl;
+  final Map<String, String> backdropVideoHeaders;
 
   bool get isPlaying => status == PlayerStatus.playing;
   bool get isBusy => status == PlayerStatus.loading;
@@ -80,11 +84,19 @@ class PlayerState {
     bool clearPlaybackContextCover = false,
     String? error,
     bool clearError = false,
+    String? backdropVideoUrl,
+    Map<String, String>? backdropVideoHeaders,
+    bool clearBackdropVideo = false,
   }) {
+    final clearVideo =
+        clearBackdropVideo ||
+        clearCurrentTrack ||
+        (currentTrack != null && currentTrack.id != this.currentTrack?.id);
     return PlayerState(
       status: status ?? this.status,
-      currentTrack:
-          clearCurrentTrack ? null : (currentTrack ?? this.currentTrack),
+      currentTrack: clearCurrentTrack
+          ? null
+          : (currentTrack ?? this.currentTrack),
       queue: queue ?? this.queue,
       currentIndex: currentIndex ?? this.currentIndex,
       position: position ?? this.position,
@@ -95,7 +107,8 @@ class PlayerState {
       playbackRate: playbackRate ?? this.playbackRate,
       pitchSemitones: pitchSemitones ?? this.pitchSemitones,
       isPitchLinked: isPitchLinked ?? this.isPitchLinked,
-      keepSpeedAcrossTracks: keepSpeedAcrossTracks ?? this.keepSpeedAcrossTracks,
+      keepSpeedAcrossTracks:
+          keepSpeedAcrossTracks ?? this.keepSpeedAcrossTracks,
       autoplaySimilar: autoplaySimilar ?? this.autoplaySimilar,
       playbackContext: clearPlaybackContext
           ? null
@@ -104,7 +117,12 @@ class PlayerState {
           ? null
           : (playbackContextCover ?? this.playbackContextCover),
       error: clearError ? null : (error ?? this.error),
+      backdropVideoUrl: clearVideo
+          ? null
+          : (backdropVideoUrl ?? this.backdropVideoUrl),
+      backdropVideoHeaders: clearVideo
+          ? const {}
+          : (backdropVideoHeaders ?? this.backdropVideoHeaders),
     );
   }
 }
-

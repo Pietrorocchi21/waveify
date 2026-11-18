@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:just_audio/just_audio.dart';
+import 'package:media_kit/media_kit.dart' as media;
 
 import '../local/local_library_store.dart';
 import '../cloud/cloud_config.dart';
@@ -13,7 +14,7 @@ import '../network/waveify_api.dart';
 
 /// Runs in the actual packaged Windows process, exercising its native decoder
 /// and its real device-library files. No account, network or user media needed.
-Future<bool> runNativeSelfTest(String output) async {
+Future<bool> runNativeSelfTest(String output, {String? videoPath}) async {
   final report = <String, dynamic>{
     'status': 'failed',
     'platform': Platform.operatingSystem,
@@ -93,6 +94,30 @@ Future<bool> runNativeSelfTest(String output) async {
     checks['native_audio_decode'] = 'passed';
     checks['duration_ms'] = duration.inMilliseconds;
     checks['native_transport'] = 'passed';
+    if (videoPath != null) {
+      final video = media.Player(
+        configuration: const media.PlayerConfiguration(vo: 'null'),
+      );
+      try {
+        await video.setVolume(0);
+        await video.setVideoTrack(media.VideoTrack.auto());
+        await video
+            .open(media.Media(File(videoPath).uri.toString()), play: false)
+            .timeout(const Duration(seconds: 10));
+        await video.setAudioTrack(media.AudioTrack.no());
+        final advancing = video.stream.position.firstWhere(
+          (position) => position >= const Duration(milliseconds: 200),
+        );
+        await video.play();
+        await advancing.timeout(const Duration(seconds: 8));
+        if ((video.state.width ?? 0) < 1 || (video.state.height ?? 0) < 1) {
+          throw StateError('Native decoder did not report a video frame.');
+        }
+        checks['native_muted_video'] = 'passed';
+      } finally {
+        await video.dispose().timeout(const Duration(seconds: 5));
+      }
+    }
     report['status'] = 'passed';
   } catch (error, stack) {
     report['error'] = '$error';

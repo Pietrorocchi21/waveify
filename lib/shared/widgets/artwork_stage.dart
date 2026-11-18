@@ -29,11 +29,13 @@ class ArtworkStage extends ConsumerStatefulWidget {
     this.initialIndex = 0,
     required this.actionLabel,
     this.large = false,
+    this.captionOnArtwork = false,
   });
   final List<StageArtwork> items;
   final int initialIndex;
   final String actionLabel;
   final bool large;
+  final bool captionOnArtwork;
   @override
   ConsumerState<ArtworkStage> createState() => _ArtworkStageState();
 }
@@ -243,20 +245,105 @@ class _ArtworkStageState extends ConsumerState<ArtworkStage> {
                                                       ),
                                                       if (active)
                                                         BoxShadow(
-                                                          color: tint
-                                                              .withValues(
-                                                                alpha: 0.12,
-                                                              ),
+                                                          color: tint.withValues(
+                                                            alpha:
+                                                                widget
+                                                                    .captionOnArtwork
+                                                                ? 0.38
+                                                                : 0.12,
+                                                          ),
                                                           blurRadius: 60,
                                                           spreadRadius: -12,
                                                         ),
                                                     ],
                                                   ),
-                                                  child: CoverImage(
-                                                    url: item.coverUrl,
-                                                    size: coverSize,
+                                                  child: ClipRRect(
                                                     borderRadius:
-                                                        DesignTokens.radiusLg,
+                                                        BorderRadius.circular(
+                                                          DesignTokens.radiusLg,
+                                                        ),
+                                                    child: Stack(
+                                                      fit: StackFit.expand,
+                                                      children: [
+                                                        CoverImage(
+                                                          url: item.coverUrl,
+                                                          size: coverSize,
+                                                        ),
+                                                        if (active &&
+                                                            widget
+                                                                .captionOnArtwork)
+                                                          Align(
+                                                            alignment: Alignment
+                                                                .bottomCenter,
+                                                            child: Container(
+                                                              width: double
+                                                                  .infinity,
+                                                              padding:
+                                                                  const EdgeInsets.fromLTRB(
+                                                                    18,
+                                                                    36,
+                                                                    18,
+                                                                    15,
+                                                                  ),
+                                                              decoration: const BoxDecoration(
+                                                                gradient: LinearGradient(
+                                                                  begin: Alignment
+                                                                      .topCenter,
+                                                                  end: Alignment
+                                                                      .bottomCenter,
+                                                                  colors: [
+                                                                    Colors
+                                                                        .transparent,
+                                                                    Color(
+                                                                      0xE8000510,
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                              child: Column(
+                                                                mainAxisSize:
+                                                                    MainAxisSize
+                                                                        .min,
+                                                                crossAxisAlignment:
+                                                                    CrossAxisAlignment
+                                                                        .start,
+                                                                children: [
+                                                                  Text(
+                                                                    item.title,
+                                                                    maxLines: 1,
+                                                                    overflow:
+                                                                        TextOverflow
+                                                                            .ellipsis,
+                                                                    style: theme
+                                                                        .textTheme
+                                                                        .headlineSmall
+                                                                        ?.copyWith(
+                                                                          color:
+                                                                              Colors.white,
+                                                                          fontWeight:
+                                                                              FontWeight.w600,
+                                                                        ),
+                                                                  ),
+                                                                  Text(
+                                                                    item.subtitle,
+                                                                    maxLines: 1,
+                                                                    overflow:
+                                                                        TextOverflow
+                                                                            .ellipsis,
+                                                                    style: theme
+                                                                        .textTheme
+                                                                        .bodyMedium
+                                                                        ?.copyWith(
+                                                                          color:
+                                                                              Colors.white70,
+                                                                        ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          ),
+                                                      ],
+                                                    ),
                                                   ),
                                                 ),
                                               ),
@@ -277,39 +364,40 @@ class _ArtworkStageState extends ConsumerState<ArtworkStage> {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: AnimatedSwitcher(
-                duration: reduced ? Duration.zero : DesignTokens.animDefault,
-                child: Column(
-                  key: ValueKey(selected.id),
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      selected.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontSize: wide ? 32 : 24,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.7,
+            if (!widget.captionOnArtwork)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: AnimatedSwitcher(
+                  duration: reduced ? Duration.zero : DesignTokens.animDefault,
+                  child: Column(
+                    key: ValueKey(selected.id),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        selected.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontSize: wide ? 32 : 24,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.7,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      selected.subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                      const SizedBox(height: 8),
+                      Text(
+                        selected.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,

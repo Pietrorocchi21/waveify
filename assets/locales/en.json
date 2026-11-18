@@ -197,6 +197,10 @@
     "download_offline": "Download for offline"
   },
   "home": {
+    "room_title": "Let the music take you.",
+    "room_subtitle": "A soundtrack for this moment.",
+    "recent_listening": "Recently played",
+    "your_playlists": "Your playlists",
     "speedDial": "Speed dial",
     "goodMorning": "Good morning",
     "goodAfternoon": "Good afternoon",
@@ -647,6 +651,8 @@
       "unsupported": "Discord Rich Presence is unavailable on this platform."
     },
     "customization": {
+      "video_backdrop": "Music video background",
+      "video_backdrop_desc": "Show an available music video behind the player while the track plays.",
       "description": "Window background wallpaper, transparency and block blur effects.",
       "apply_to_overlay": "Apply to overlay mini player",
       "apply_to_overlay_desc": "Render the custom background and glass styling on the floating mini player.",

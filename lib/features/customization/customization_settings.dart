@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:waveify/core/providers/app_providers.dart';
 import 'package:waveify/shared/widgets/common.dart';
+
 import 'customization_controller.dart';
 
 /// The customization of the interface: the wallpaper and the decoration of
@@ -21,6 +24,18 @@ class CustomizationSettings extends ConsumerWidget {
       padding: EdgeInsets.zero,
       child: Column(
         children: [
+          if (Platform.isWindows)
+            SwitchListTile(
+              value: ref.watch(settingsProvider.select((s) => s.videoBackdrop)),
+              title: Text(t('settings.customization.video_backdrop')),
+              subtitle: Text(t('settings.customization.video_backdrop_desc')),
+              onChanged: (value) {
+                final settings = ref.read(settingsProvider);
+                ref
+                    .read(settingsProvider.notifier)
+                    .update(settings.copyWith(videoBackdrop: value));
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.wallpaper_rounded),
             title: Text(t('settings.customization.wallpaper')),
@@ -128,9 +143,8 @@ class _BlockRow extends ConsumerWidget {
       subtitle: Text(
         '${t('settings.customization.opacity')}: ${config.opacity} · '
         '${t('settings.customization.blur')}: ${config.blur}',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).textTertiary,
-        ),
+        style: Theme.of(context).textTheme.bodySmall
+            ?.copyWith(color: Theme.of(context).textTertiary),
       ),
       childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       children: [

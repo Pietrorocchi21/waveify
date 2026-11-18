@@ -55,6 +55,9 @@ class StreamResolver {
       return ResolvedAudioStream(
         url: uri.toString(),
         mimeType: mimeFor(uri.path),
+        videoUrl: uri.path.toLowerCase().endsWith('.mp4')
+            ? uri.toString()
+            : null,
       );
     }
     if (uri?.scheme == 'file' ||
@@ -74,17 +77,34 @@ class StreamResolver {
     if (videoId != null) {
       final client = youtube ?? yt.YoutubeExplode();
       try {
-        final streams = await _youtubeAudio(client, videoId);
-        if (streams.isEmpty) {
+        final manifest = await _youtubeManifest(client, videoId);
+        final audio = _rankAudio(manifest.audioOnly);
+        final muxed = manifest.muxed.toList()
+          ..sort(
+            (left, right) => left.bitrate.bitsPerSecond.compareTo(
+              right.bitrate.bitsPerSecond,
+            ),
+          );
+        if (audio.isEmpty && muxed.isEmpty) {
           throw const InnertubeException(
             'This video has no accessible audio stream.',
             404,
           );
         }
-        final stream = streams.first;
+        final yt.StreamInfo stream = audio.firstOrNull ?? muxed.first;
+        final video = manifest.videoOnly.toList()
+          ..sort((left, right) {
+            final leftHeight = left.videoResolution.height;
+            final rightHeight = right.videoResolution.height;
+            if (leftHeight <= 480 && rightHeight <= 480) {
+              return rightHeight.compareTo(leftHeight);
+            }
+            return leftHeight.compareTo(rightHeight);
+          });
         return ResolvedAudioStream(
           url: stream.url.toString(),
           mimeType: stream.container.name == 'mp4' ? 'audio/mp4' : 'audio/webm',
+          videoUrl: (video.firstOrNull ?? muxed.firstOrNull)?.url.toString(),
         );
       } finally {
         if (youtube == null) client.close();
@@ -107,13 +127,14 @@ class StreamResolver {
       url: stream.url,
       mimeType: '${result['mimeType'] ?? stream.mimeType}',
       durationMs: (result['durationMs'] as num?)?.toInt() ?? 0,
+      videoUrl: stream.videoUrl,
       headers: (result['headers'] as Map? ?? {}).map(
         (key, value) => MapEntry('$key', '$value'),
       ),
     );
   }
 
-  Future<List<yt.AudioOnlyStreamInfo>> _youtubeAudio(
+  Future<yt.StreamManifest> _youtubeManifest(
     yt.YoutubeExplode client,
     String videoId,
   ) async {
@@ -125,14 +146,13 @@ class StreamResolver {
             requireWatchPage: false,
           )
           .timeout(const Duration(seconds: 8));
-      if (direct.audioOnly.isNotEmpty) return _rankAudio(direct.audioOnly);
+      if (direct.audioOnly.isNotEmpty || direct.muxed.isNotEmpty) return direct;
     } catch (_) {
       // Some public videos require the library's standard watch-page flow.
     }
-    final manifest = await client.videos.streamsClient
+    return client.videos.streamsClient
         .getManifest(videoId)
         .timeout(const Duration(seconds: 12));
-    return _rankAudio(manifest.audioOnly);
   }
 
   List<yt.AudioOnlyStreamInfo> _rankAudio(
