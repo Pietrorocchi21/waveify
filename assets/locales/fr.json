@@ -361,7 +361,8 @@
       "account_created": "Compte créé !",
       "logged_in": "Connecté !"
     },
-    "no_account_action": "Créer un compte"
+    "no_account_action": "Créer un compte",
+    "confirm_email_pending": "Consultez votre e-mail pour confirmer votre inscription, puis connectez-vous."
   },
   "player": {
     "repeat_off": "Répéter : désactivé",

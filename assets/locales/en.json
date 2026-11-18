@@ -361,7 +361,8 @@
       "account_created": "Account created!",
       "logged_in": "Logged in!"
     },
-    "no_account_action": "Create an account"
+    "no_account_action": "Create an account",
+    "confirm_email_pending": "Check your email to confirm your registration, then sign in."
   },
   "player": {
     "repeat_off": "Repeat: off",

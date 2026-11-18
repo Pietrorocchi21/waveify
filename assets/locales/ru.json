@@ -361,7 +361,8 @@
     "error_password_required": "Введите пароль",
     "error_passwords_no_match": "Пароли не совпадают",
     "error_wrong_password": "Неверный пароль",
-    "no_account_action": "Создать аккаунт"
+    "no_account_action": "Создать аккаунт",
+    "confirm_email_pending": "Подтвердите регистрацию по электронной почте, затем войдите."
   },
   "player": {
     "repeat_off": "Повтор: выкл.",

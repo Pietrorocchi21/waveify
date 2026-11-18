@@ -361,7 +361,8 @@
       "account_created": "¡Cuenta creada con éxito!",
       "logged_in": "¡Sesión iniciada!"
     },
-    "no_account_action": "Crear una cuenta"
+    "no_account_action": "Crear una cuenta",
+    "confirm_email_pending": "Revisa tu correo para confirmar el registro y después inicia sesión."
   },
   "player": {
     "repeat_off": "Repetir: desactivado",

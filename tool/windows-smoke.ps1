@@ -14,6 +14,7 @@ try {
     if ($process.ExitCode -ne 0) { throw "Native self-test exited with $($process.ExitCode)" }
     if (-not (Test-Path $report)) { throw 'Native self-test did not write its JSON report' }
     $result = Get-Content $report -Raw | ConvertFrom-Json
+    if ($result.cloud_configured -ne $true) { throw 'Windows release is missing public cloud configuration for online accounts' }
     if ($result.status -ne 'passed') { throw "Native self-test did not pass: $(Get-Content $report -Raw)" }
     $frameReport = Join-Path $output 'first-frame.json'
     Remove-Item $frameReport -ErrorAction SilentlyContinue

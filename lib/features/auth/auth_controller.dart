@@ -154,6 +154,7 @@ class AuthController extends Notifier<AuthState> {
     required String username,
     required String displayName,
   }) async {
+    ref.read(useCloudAccountProvider.notifier).state = true;
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final tokens = await ref

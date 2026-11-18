@@ -359,7 +359,8 @@
       "account_created": "Konto erstellt!",
       "logged_in": "Angemeldet!"
     },
-    "no_account_action": "Konto erstellen"
+    "no_account_action": "Konto erstellen",
+    "confirm_email_pending": "Bestätige deine Registrierung über die E-Mail und melde dich anschließend an."
   },
   "player": {
     "repeat_off": "Wiederholung: aus",

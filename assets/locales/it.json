@@ -359,7 +359,8 @@
       "account_created": "Account creato!",
       "logged_in": "Accesso effettuato!"
     },
-    "no_account_action": "Crea un account"
+    "no_account_action": "Crea un account",
+    "confirm_email_pending": "Controlla la tua email per confermare la registrazione, poi accedi."
   },
   "player": {
     "repeat_off": "Ripeti: disattivato",

@@ -56,6 +56,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final theme = Theme.of(context);
     final t = ref.watch(translatorProvider);
     final auth = ref.watch(authControllerProvider);
+    final awaitingConfirmation =
+        auth.errorCode == 'EMAIL_CONFIRMATION_REQUIRED';
+    final messageColor = awaitingConfirmation
+        ? theme.colorScheme.primary
+        : theme.colorScheme.error;
 
     return Scaffold(
       body: AmbientBackground(
@@ -244,15 +249,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: theme.colorScheme.error.withValues(
-                                      alpha: 0.12,
-                                    ),
+                                    color: messageColor.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    auth.error!,
+                                    awaitingConfirmation
+                                        ? t('login.confirm_email_pending')
+                                        : auth.error!,
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.error,
+                                      color: messageColor,
                                     ),
                                   ),
                                 ),

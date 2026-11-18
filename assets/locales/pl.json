@@ -363,7 +363,8 @@
       "account_created": "Konto utworzone!",
       "logged_in": "Zalogowano!"
     },
-    "no_account_action": "Utwórz konto"
+    "no_account_action": "Utwórz konto",
+    "confirm_email_pending": "Sprawdź pocztę, potwierdź rejestrację, a następnie się zaloguj."
   },
   "player": {
     "repeat_off": "Powtarzanie: wył.",

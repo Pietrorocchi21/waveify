@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:just_audio/just_audio.dart';
 
 import '../local/local_library_store.dart';
+import '../cloud/cloud_config.dart';
 import '../local/local_audio_importer.dart';
 import '../local/local_api_client.dart';
 import '../network/waveify_api.dart';
@@ -16,6 +17,7 @@ Future<bool> runNativeSelfTest(String output) async {
   final report = <String, dynamic>{
     'status': 'failed',
     'platform': Platform.operatingSystem,
+    'cloud_configured': CloudConfig.isConfigured,
     'checks': <String, dynamic>{},
   };
   final checks = report['checks'] as Map<String, dynamic>;

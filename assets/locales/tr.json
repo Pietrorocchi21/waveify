@@ -359,7 +359,8 @@
       "account_created": "Hesap oluşturuldu!",
       "logged_in": "Giriş yapıldı!"
     },
-    "no_account_action": "Hesap oluştur"
+    "no_account_action": "Hesap oluştur",
+    "confirm_email_pending": "Kaydınızı onaylamak için e-postanızı kontrol edin, ardından giriş yapın."
   },
   "player": {
     "repeat_off": "Tekrar: kapalı",
