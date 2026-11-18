@@ -1,3 +1,5 @@
+import '../../../shared/widgets/waveify_brand.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -126,13 +128,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             padding: EdgeInsets.fromLTRB(inset, 20, inset, 12),
             child: Row(
               children: [
-                Text(
-                  'WAVEIFY',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 3,
-                  ),
-                ),
+                const WaveifyWordmark(),
                 const Spacer(),
                 Flexible(
                   child: Text(

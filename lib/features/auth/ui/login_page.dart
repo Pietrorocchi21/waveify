@@ -1,3 +1,5 @@
+import '../../../shared/widgets/waveify_brand.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -90,11 +92,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Icon(
-                                Icons.graphic_eq_rounded,
-                                size: 56,
-                                color: theme.colorScheme.primary,
-                              ),
+                              const WaveifyWordmark(stacked: true),
                               const SizedBox(height: 20),
                               Text(
                                 _isRegistering

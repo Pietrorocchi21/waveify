@@ -1,3 +1,5 @@
+import '../shared/widgets/waveify_brand.dart';
+
 import 'package:flutter/services.dart';
 import 'package:waveify/core/theme/artwork_palette.dart';
 import 'package:waveify/features/player/player_controller.dart';
@@ -279,11 +281,7 @@ class _SideNavigation extends ConsumerWidget {
           child: IconButton(
             tooltip: 'Waveify',
             onPressed: () => context.go('/'),
-            icon: Icon(
-              Icons.graphic_eq_rounded,
-              color: theme.colorScheme.primary,
-              size: 28,
-            ),
+            icon: const WaveifyMark(width: 34),
           ),
         ),
         Expanded(
