@@ -74,10 +74,11 @@ class ManagementDatabase:
         self.ref, self.token = host.split('.')[0], token
         self.project_url = project_url.rstrip('/')
 
-    def api(self, path, body=None):
+    def api(self, path, body=None, method=None):
         req = Request('https://api.supabase.com/v1/projects/' + self.ref + path,
                       data=None if body is None else json.dumps(body).encode(),
-                      headers={'Authorization': 'Bearer ' + self.token, 'Content-Type': 'application/json'})
+                      headers={'Authorization': 'Bearer ' + self.token, 'Content-Type': 'application/json'},
+                      method=method)
         try:
             with urlopen(req, timeout=90) as response:
                 return json.load(response)
@@ -411,7 +412,7 @@ def restore(db, archive, passphrase, identities, storage=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['status', 'deploy', 'bundle', 'backup', 'inspect', 'restore'])
+    parser.add_argument('operation', choices=['status', 'auth-redirect', 'deploy', 'bundle', 'backup', 'inspect', 'restore'])
     parser.add_argument('--output')
     parser.add_argument('--archive')
     parser.add_argument('--identity-map')
@@ -425,6 +426,19 @@ def main():
             print(json.dumps(inspect_backup(args.archive, os.environ.get('WAVEIFY_BACKUP_PASSPHRASE', ''))))
             return
         db = configured_database()
+        if args.operation == 'auth-redirect':
+            if not isinstance(db, ManagementDatabase):
+                raise BackendError('Supabase management access is required.')
+            landing = 'https://pietrorocchi21.github.io/waveify/auth/'
+            with urlopen(landing, timeout=30) as response:
+                if response.status != 200 or b'WAVEIFY' not in response.read(65536):
+                    raise BackendError('Confirmation page is not available; configuration was not changed.')
+            db.api('/config/auth', {'site_url': landing}, method='PATCH')
+            result = db.api('/config/auth')
+            if result.get('site_url') != landing:
+                raise BackendError('Auth redirect configuration did not persist.')
+            print(json.dumps({'auth_redirect': 'configured', 'site_url': landing}))
+            return
         if args.operation == 'status':
             report = {'admin_configured': db is not None}
             if isinstance(db, ManagementDatabase):
