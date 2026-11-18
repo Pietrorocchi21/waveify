@@ -28,7 +28,7 @@ try {
     $argsForHost = @('--ota-self-test', "--ota-installer=`"$cachedSetup`"", "--ota-sha256=$hash",
         "--ota-target=`"$target`"", "--ota-report=`"$report`"", "--ota-startup=`"$startup`"")
     $process = Start-Process $hostExe -ArgumentList $argsForHost -PassThru
-    if (-not $process.WaitForExit(30000)) { throw 'Update host did not hand off to helper' }
+    if (-not $process.WaitForExit(45000)) { throw 'Update host did not hand off to helper' }
     if ($process.ExitCode -ne 0) { throw "Update host failed: $($process.ExitCode)" }
     $deadline = (Get-Date).AddSeconds(120)
     while ((-not (Test-Path $report) -or -not (Test-Path $startup)) -and (Get-Date) -lt $deadline) {
@@ -39,10 +39,13 @@ try {
     $preserved = Get-Content $report -Raw | ConvertFrom-Json
     $frame = Get-Content $startup -Raw | ConvertFrom-Json
     if ($preserved.status -ne 'passed' -or $frame.status -ne 'passed' -or $frame.window_fits_work_area -ne $true) { throw 'Update lost data or did not render correctly' }
+    $restarted = Get-Process -Id $frame.pid
+    $testSession = (Get-Process -Id $PID).SessionId
+    if ($restarted.SessionId -ne $testSession) { throw 'Updated app restarted outside the interactive user session' }
     $afterVersion = (Get-Item $target).VersionInfo.ProductVersion
     @{ status = 'passed'; fromVersion = $beforeVersion; toVersion = $afterVersion;
         libraryPreserved = $preserved.library_preserved; settingsPreserved = $preserved.settings_preserved;
-        restarted = $true } | ConvertTo-Json | Set-Content (Join-Path $output 'update.json')
+        restarted = $true; interactiveSession = $restarted.SessionId } | ConvertTo-Json | Set-Content (Join-Path $output 'update.json')
 } catch {
     $_ | Out-String | Set-Content (Join-Path $output 'failure.txt')
     throw

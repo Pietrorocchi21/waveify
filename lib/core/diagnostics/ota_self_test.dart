@@ -55,14 +55,7 @@ Future<bool> startOtaSelfTest({
       '--startup-report=$startupPath',
     ],
   );
-  await Process.start('powershell.exe', [
-    '-NoProfile',
-    '-NonInteractive',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-File',
-    helper.path,
-  ], mode: ProcessStartMode.detached);
+  await UpdaterService.instance.launchInstallerHelper(helper);
   return true;
 }
 

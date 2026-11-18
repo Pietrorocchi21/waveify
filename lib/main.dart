@@ -64,14 +64,27 @@ Future<void> main(List<String> args) async {
     exit(passed ? 0 : 1);
   }
   if (args.contains('--ota-self-test')) {
-    await startOtaSelfTest(
-      installerPath: argument('--ota-installer')!,
-      hash: argument('--ota-sha256')!,
-      targetExecutable: argument('--ota-target')!,
-      reportPath: argument('--ota-report')!,
-      startupPath: argument('--ota-startup')!,
-    );
-    exit(0);
+    final report = argument('--ota-report')!;
+    try {
+      await startOtaSelfTest(
+        installerPath: argument('--ota-installer')!,
+        hash: argument('--ota-sha256')!,
+        targetExecutable: argument('--ota-target')!,
+        reportPath: report,
+        startupPath: argument('--ota-startup')!,
+      );
+      exit(0);
+    } catch (error) {
+      await File('$report.host-error.json').writeAsString(
+        jsonEncode({
+          'status': 'failed',
+          'error_type': '${error.runtimeType}',
+          'message': '$error',
+        }),
+        flush: true,
+      );
+      exit(1);
+    }
   }
   final otaReport = argument('--ota-verify-state');
   if (otaReport != null) await verifyOtaSelfTest(otaReport);

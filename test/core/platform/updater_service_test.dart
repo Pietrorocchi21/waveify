@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -202,6 +203,125 @@ void main() {
       throwsFormatException,
     );
   });
+
+  String decodeLauncher(List<String> arguments) {
+    final bytes = base64Decode(arguments.last);
+    return String.fromCharCodes(
+      List.generate(
+        bytes.length ~/ 2,
+        (index) => bytes[index * 2] | bytes[index * 2 + 1] << 8,
+      ),
+    );
+  }
+
+  Future<void> acknowledge(
+    String launcher, {
+    int session = 7,
+    int process = 321,
+  }) async {
+    final marker = RegExp(r'-StartedMarker "([^"]+)"')
+        .firstMatch(launcher)!
+        .group(1)!;
+    final token = RegExp(r'-StartupToken ([a-f0-9]+)')
+        .firstMatch(launcher)!
+        .group(1)!;
+    await File(marker.replaceAll("''", "'")).writeAsString(
+      jsonEncode({'token': token, 'sessionId': session, 'processId': process}),
+    );
+  }
+
+  test('broker launch preserves Unicode paths and waits for real helper acknowledgment', () async {
+    final directory = Directory("${cache.path}/OTA è user's space");
+    await directory.create();
+    final script = File('${directory.path}/install-update.ps1');
+    await script.writeAsString('# test');
+    final updater = UpdaterService(
+      platform: 'windows',
+      helperLauncher: (exe, args) async {
+        expect(exe, 'powershell.exe');
+        final launcher = decodeLauncher(args);
+        expect(launcher, contains('Invoke-CimMethod -ClassName Win32_Process'));
+        expect(launcher, contains("OTA è user''s space"));
+        expect(launcher, contains('-ExpectedSessionId'));
+        await acknowledge(launcher);
+        return ProcessResult(1, 0, '{"processId":321,"sessionId":7}', '');
+      },
+    );
+    await updater.launchInstallerHelper(script);
+    expect(await File('${script.path}.launch-error.txt').exists(), isFalse);
+  });
+
+  test('helper session mismatch fails safely before caller can exit', () async {
+    final script = File('${cache.path}/install-update.ps1');
+    await script.writeAsString('# test');
+    final updater = UpdaterService(
+      platform: 'windows',
+      helperLauncher: (_, args) async {
+        await acknowledge(decodeLauncher(args), session: 0);
+        return ProcessResult(1, 0, '{"processId":321,"sessionId":7}', '');
+      },
+    );
+    await expectLater(updater.launchInstallerHelper(script), throwsStateError);
+    expect(
+      await File('${script.path}.launch-error.txt').readAsString(),
+      contains('OTA_HELPER_SESSION_OR_PID_MISMATCH'),
+    );
+  });
+
+  test(
+    'broker success without helper acknowledgment times out and logs stage',
+    () async {
+      final script = File('${cache.path}/install-update.ps1');
+      await script.writeAsString('# test');
+      final updater = UpdaterService(
+        platform: 'windows',
+        helperLauncher: (_, _) async =>
+            ProcessResult(1, 0, '{"processId":321,"sessionId":7}', ''),
+      );
+      await expectLater(
+        updater.launchInstallerHelper(
+          script,
+          startupTimeout: const Duration(milliseconds: 20),
+        ),
+        throwsA(isA<TimeoutException>()),
+      );
+      expect(
+        await File('${script.path}.launch-error.txt').readAsString(),
+        contains('OTA_HELPER_STARTUP_TIMEOUT'),
+      );
+    },
+  );
+
+  test(
+    'broker failure exposes return code and redacts startup token',
+    () async {
+      final script = File('${cache.path}/install-update.ps1');
+      await script.writeAsString('# test');
+      String? token;
+      final updater = UpdaterService(
+        platform: 'windows',
+        helperLauncher: (_, args) async {
+          token = RegExp(r'-StartupToken ([a-f0-9]+)')
+              .firstMatch(decodeLauncher(args))!
+              .group(1)!;
+          return ProcessResult(
+            1,
+            1,
+            '',
+            'OTA_BROKER_CREATE_FAILED code=2 $token',
+          );
+        },
+      );
+      await expectLater(
+        updater.launchInstallerHelper(script),
+        throwsStateError,
+      );
+      final logged = await File('${script.path}.launch-error.txt')
+          .readAsString();
+      expect(logged, contains('code=2'));
+      expect(logged, isNot(contains(token)));
+    },
+  );
 
   test('unsupported platforms are never reported up to date', () async {
     final updater = UpdaterService(platform: 'linux');

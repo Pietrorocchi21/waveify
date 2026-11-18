@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
@@ -119,6 +120,7 @@ class UpdaterService extends ChangeNotifier {
     this.currentVersion = appVersion,
     Future<Directory> Function()? cacheDirectory,
     this.installHook,
+    this.helperLauncher,
   }) : _dio =
            dio ??
            Dio(
@@ -143,6 +145,9 @@ class UpdaterService extends ChangeNotifier {
   final String _platform;
   final Future<Directory> Function() _cacheDirectory;
   final Future<void> Function(File, UpdateManifest)? installHook;
+
+  /// Test seam for the short-lived WMI launcher; production uses Process.run.
+  final Future<ProcessResult> Function(String, List<String>)? helperLauncher;
   final String currentVersion;
   UpdateState state = UpdateState.idle;
   UpdateManifest? _manifest;
@@ -399,7 +404,14 @@ class UpdaterService extends ChangeNotifier {
         'Start-Process -FilePath ${quote(executable)}'
         '${restartArguments.isEmpty ? '' : ' -ArgumentList ${quote(restartArguments.map(windowsArgument).join(' '))}'}';
     await script.writeAsString('''﻿
+param([string]\$StartedMarker = '', [string]\$StartupToken = '', [int]\$ExpectedSessionId = -1)
 \$ErrorActionPreference = 'Stop'
+\$sessionId = (Get-Process -Id \$PID).SessionId
+if (\$StartedMarker) {
+  \$ack = @{ token = \$StartupToken; sessionId = \$sessionId; processId = \$PID } | ConvertTo-Json -Compress
+  [IO.File]::WriteAllText(\$StartedMarker, \$ack)
+}
+if (\$ExpectedSessionId -ge 0 -and \$sessionId -ne \$ExpectedSessionId) { exit 1 }
 try {
   Wait-Process -Id $parentPid -ErrorAction SilentlyContinue
   \$installer = ${quote(installer.path)}
@@ -418,17 +430,110 @@ try {
 
   Future<void> _launchInstaller(File installer, UpdateManifest manifest) async {
     final script = await writeInstallerHelper(installer, manifest);
-    await Process.start('powershell.exe', [
-      '-NoProfile',
-      '-NonInteractive',
-      '-ExecutionPolicy',
-      'Bypass',
-      '-WindowStyle',
-      'Hidden',
-      '-File',
-      script.path,
-    ], mode: ProcessStartMode.detached);
+    await launchInstallerHelper(script);
     exit(0);
+  }
+
+  /// Starts the helper through Windows' local process broker and waits for an
+  /// acknowledgment from the actual helper. A detached direct child can still
+  /// belong to the Flutter/runner job and die as soon as the app exits.
+  Future<void> launchInstallerHelper(
+    File script, {
+    Duration startupTimeout = const Duration(seconds: 20),
+  }) async {
+    final random = Random.secure();
+    final token = List.generate(
+      24,
+      (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+    ).join();
+    final marker = File('${script.path}.started-$token');
+    final log = File('${script.path}.launch-error.txt');
+    String quote(String value) => "'${value.replaceAll("'", "''")}'";
+    String windowsArgument(String value) => '"${value.replaceAll('"', '')}"';
+    try {
+      if (!await script.exists()) throw StateError('Update helper is missing');
+      // WMI creates the helper outside this application's process job. The
+      // broker receives a command line, never a shell expression. UTF-16LE
+      // EncodedCommand preserves Unicode paths without console code pages.
+      final command = <String>[
+        'powershell.exe',
+        '-NoProfile',
+        '-NonInteractive',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-WindowStyle',
+        'Hidden',
+        '-File',
+        windowsArgument(script.absolute.path),
+        '-StartedMarker',
+        windowsArgument(marker.absolute.path),
+        '-StartupToken',
+        token,
+      ].join(' ');
+      final launcher =
+          '''
+\$ErrorActionPreference = 'Stop'
+\$sessionId = (Get-Process -Id \$PID).SessionId
+\$command = ${quote(command)} + ' -ExpectedSessionId ' + \$sessionId
+\$result = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = \$command }
+if (\$result.ReturnValue -ne 0) { Write-Error "OTA_BROKER_CREATE_FAILED code=\$(\$result.ReturnValue)"; exit 1 }
+@{ processId = \$result.ProcessId; sessionId = \$sessionId } | ConvertTo-Json -Compress
+''';
+      final encoded = base64Encode(
+        launcher.codeUnits.expand((unit) => [unit & 255, unit >> 8]).toList(),
+      );
+      final run =
+          helperLauncher ??
+          (String executable, List<String> arguments) =>
+              Process.run(executable, arguments);
+      final result = await run('powershell.exe', [
+        '-NoProfile',
+        '-NonInteractive',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-WindowStyle',
+        'Hidden',
+        '-EncodedCommand',
+        encoded,
+      ]).timeout(startupTimeout);
+      if (result.exitCode != 0) {
+        throw StateError(
+          'OTA_LAUNCHER_FAILED exitCode=${result.exitCode}: '
+          '${result.stderr.toString().replaceAll(token, '[redacted]')}',
+        );
+      }
+      final launched = jsonDecode(result.stdout.toString().trim()) as Map;
+      if (launched['sessionId'] is! int || launched['processId'] is! int) {
+        throw StateError('OTA_LAUNCHER_INVALID_ACK');
+      }
+      final deadline = DateTime.now().add(startupTimeout);
+      while (DateTime.now().isBefore(deadline)) {
+        if (await marker.exists()) {
+          // File creation may precede the final write; retry partial JSON.
+          Map? acknowledgment;
+          try {
+            acknowledgment = jsonDecode(await marker.readAsString()) as Map;
+          } on FormatException {
+            /* Retry while the helper finishes writing. */
+          }
+          if (acknowledgment?['token'] == token) {
+            if (acknowledgment?['sessionId'] != launched['sessionId'] ||
+                acknowledgment?['processId'] != launched['processId']) {
+              throw StateError('OTA_HELPER_SESSION_OR_PID_MISMATCH');
+            }
+            return;
+          }
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+      throw TimeoutException('OTA_HELPER_STARTUP_TIMEOUT', startupTimeout);
+    } catch (error) {
+      await log.writeAsString(
+        '${error.toString().replaceAll(token, '[redacted]')}\n',
+        flush: true,
+      );
+      rethrow;
+    }
   }
 
   Future<void> openReleasePage() async {
