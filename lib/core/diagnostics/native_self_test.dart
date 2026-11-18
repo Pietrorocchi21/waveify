@@ -95,6 +95,24 @@ Future<bool> runNativeSelfTest(String output, {String? videoPath}) async {
     checks['duration_ms'] = duration.inMilliseconds;
     checks['native_transport'] = 'passed';
     if (videoPath != null) {
+      var rejected = false;
+      try {
+        await player
+            .setFilePath('${directory.path}/missing-source.mp4')
+            .timeout(const Duration(seconds: 5));
+      } on PlayerException {
+        rejected = true;
+      }
+      if (!rejected) {
+        throw StateError('Native player accepted a missing source.');
+      }
+      final recovered = await player
+          .setFilePath(input.path)
+          .timeout(const Duration(seconds: 10));
+      if (recovered == null || recovered.inMilliseconds < 900) {
+        throw StateError('Native player did not recover after a failed open.');
+      }
+      checks['native_audio_open_recovery'] = 'passed';
       final video = media.Player(
         configuration: const media.PlayerConfiguration(vo: 'null'),
       );

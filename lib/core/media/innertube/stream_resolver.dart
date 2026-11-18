@@ -92,6 +92,11 @@ class StreamResolver {
           );
         }
         final yt.StreamInfo stream = audio.firstOrNull ?? muxed.first;
+        final alternate =
+            audio
+                .where((candidate) => candidate.container != stream.container)
+                .firstOrNull ??
+            muxed.where((candidate) => candidate.url != stream.url).firstOrNull;
         final video = manifest.videoOnly.toList()
           ..sort((left, right) {
             final leftHeight = left.videoResolution.height;
@@ -105,6 +110,7 @@ class StreamResolver {
           url: stream.url.toString(),
           mimeType: stream.container.name == 'mp4' ? 'audio/mp4' : 'audio/webm',
           videoUrl: (video.firstOrNull ?? muxed.firstOrNull)?.url.toString(),
+          alternateUrls: [if (alternate != null) alternate.url.toString()],
         );
       } finally {
         if (youtube == null) client.close();
@@ -128,6 +134,7 @@ class StreamResolver {
       mimeType: '${result['mimeType'] ?? stream.mimeType}',
       durationMs: (result['durationMs'] as num?)?.toInt() ?? 0,
       videoUrl: stream.videoUrl,
+      alternateUrls: stream.alternateUrls,
       headers: (result['headers'] as Map? ?? {}).map(
         (key, value) => MapEntry('$key', '$value'),
       ),

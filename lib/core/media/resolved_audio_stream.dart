@@ -7,9 +7,11 @@ class ResolvedAudioStream {
     this.durationMs = 0,
     this.headers = const {},
     this.videoUrl,
+    this.alternateUrls = const [],
   });
   final String url, mimeType;
   final String? videoUrl;
+  final List<String> alternateUrls;
   final int durationMs;
   final Map<String, String> headers;
   factory ResolvedAudioStream.local(String path, {int durationMs = 0}) =>

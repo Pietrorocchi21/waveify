@@ -269,12 +269,15 @@ class PlayerController extends Notifier<PlayerState> {
     bool skipOnError = false,
   }) async {
     _telemetry.startTrack(track, state.playbackContext);
+    final session = _sessionId;
+    bool isCurrent() =>
+        session == _sessionId && state.currentTrack?.id == track.id;
 
     var openingAudio = false;
     try {
       final stream = await _resolveStream(track)
           .timeout(const Duration(seconds: 25));
-      if (state.currentTrack?.id != track.id) return;
+      if (!isCurrent()) return;
       openingAudio = true;
       state = state.copyWith(
         backdropVideoUrl: stream.videoUrl,
@@ -294,15 +297,30 @@ class PlayerController extends Notifier<PlayerState> {
       final speed = state.keepSpeedAcrossTracks ? state.playbackRate : 1.0;
       final pitch = state.keepSpeedAcrossTracks ? state.pitchSemitones : 0.0;
 
-      await _handler.loadAndPlay(
-        url: stream.url,
-        headers: stream.headers,
-        mediaItem: mediaItem,
-        initialPosition: initialPosition,
-        speed: speed,
-        pitch: _semitoneMultiplier(pitch),
-      );
+      final sources = [stream.url, ...stream.alternateUrls];
+      for (var index = 0; index < sources.length; index++) {
+        if (!isCurrent()) return;
+        try {
+          await _handler.loadAndPlay(
+            url: sources[index],
+            headers: stream.headers,
+            mediaItem: mediaItem,
+            initialPosition: initialPosition,
+            speed: speed,
+            pitch: pitch,
+          );
+          break;
+        } catch (_) {
+          if (!isCurrent()) return;
+          if (index == sources.length - 1) rethrow;
+          state = state.copyWith(
+            status: PlayerStatus.loading,
+            clearError: true,
+          );
+        }
+      }
     } catch (err) {
+      if (!isCurrent()) return;
       final stage = openingAudio ? 'Audio player' : 'Stream resolver';
       final message = '$stage: ${err.runtimeType}';
       if (skipOnError) {

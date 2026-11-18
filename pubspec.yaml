@@ -28,7 +28,8 @@ dependencies:
   # Desktop (Windows/Linux) implementation of the just_audio API, backed by
   # libmpv. It also unlocks Opus/WebM on Windows, which the native
   # Windows Media Foundation backend cannot decode.
-  just_audio_media_kit: ^2.1.0
+  just_audio_media_kit:
+    path: third_party/just_audio_media_kit
   media_kit: ^1.2.0
   media_kit_libs_linux: any
   media_kit_libs_windows_video: ^1.0.11
