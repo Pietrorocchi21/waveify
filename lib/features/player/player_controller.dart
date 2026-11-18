@@ -272,7 +272,8 @@ class PlayerController extends Notifier<PlayerState> {
 
     var openingAudio = false;
     try {
-      final stream = await _resolveStream(track);
+      final stream = await _resolveStream(track)
+          .timeout(const Duration(seconds: 25));
       if (state.currentTrack?.id != track.id) return;
       openingAudio = true;
       final mediaItem = MediaItem(
@@ -302,9 +303,8 @@ class PlayerController extends Notifier<PlayerState> {
       if (skipOnError) {
         await _handlePlaybackError(track.id, message);
       } else if (state.currentTrack?.id == track.id) {
-        await _handler.pause();
-        if (state.currentTrack?.id != track.id) return;
         state = state.copyWith(status: PlayerStatus.error, error: message);
+        unawaited(_handler.pause().catchError((Object _) {}));
       }
     }
   }

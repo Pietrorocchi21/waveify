@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../models/lyrics.dart';
 import '../../models/track.dart';
+import '../../core/media/innertube/stream_resolver.dart';
 
 /// Optional public exact-match lyrics fallback; never substitutes another song.
 class PublicLyricsClient {
@@ -66,7 +67,36 @@ class PublicLyricsClient {
     );
   }
 
-  Future<LyricsCandidate?> get(Track track, {CancelToken? cancelToken}) async {
+  static Track _lookupTrack(Track track) {
+    if (StreamResolver.toVideoId(track.id) == null) return track;
+    final title = track.title
+        .replaceFirst(
+          RegExp(
+            r'\s*[\[(](?:official\s+(?:(?:music|lyric)\s+)?(?:video|audio)|lyrics?\s+video)[\])]\s*$',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .trim();
+    final artist = track.artists
+        .replaceFirst(RegExp(r'\s*VEVO$', caseSensitive: false), '')
+        .trim();
+    final separator = title.indexOf(' - ');
+    if (separator >= 0 &&
+        _normalize(title.substring(0, separator)) == _normalize(artist)) {
+      return track.copyWith(
+        title: title.substring(separator + 3).trim(),
+        artists: artist,
+      );
+    }
+    return track.copyWith(title: title, artists: artist);
+  }
+
+  Future<LyricsCandidate?> get(
+    Track original, {
+    CancelToken? cancelToken,
+  }) async {
+    final track = _lookupTrack(original);
     if (track.title.trim().isEmpty || track.artists.trim().isEmpty) return null;
     final key =
         '${track.title}|${track.artists}|${track.album?.title}|${track.durationMs}';

@@ -80,9 +80,11 @@ class WaveifyAudioHandler extends BaseAudioHandler {
     this.mediaItem.add(mediaItem);
 
     try {
-      await _player.setAudioSource(
-        AudioSource.uri(Uri.parse(url), headers: headers, tag: mediaItem),
-      );
+      await _player
+          .setAudioSource(
+            AudioSource.uri(Uri.parse(url), headers: headers, tag: mediaItem),
+          )
+          .timeout(const Duration(seconds: 15));
     } catch (err) {
       playbackState.add(
         playbackState.value.copyWith(

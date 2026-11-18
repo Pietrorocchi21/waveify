@@ -15,6 +15,9 @@ class InnertubeCatalog {
   static String _artistName(String author) => author
       .replaceFirst(RegExp(r'\s*-\s*Topic$', caseSensitive: false), '')
       .trim();
+  static String _videoCover(String id) =>
+      'https://i.ytimg.com/vi/$id/hqdefault.jpg';
+
   static Track mapVideo(yt.Video video) => Track(
     id: video.id.value,
     title: video.title,
@@ -23,7 +26,7 @@ class InnertubeCatalog {
     artistList: [
       TrackArtist(id: video.channelId.value, name: _artistName(video.author)),
     ],
-    coverUrl: video.thumbnails.highResUrl,
+    coverUrl: _videoCover(video.id.value),
     durationMs: video.duration?.inMilliseconds ?? 0,
   );
   Future<List<SearchItem>> search(
@@ -65,16 +68,10 @@ class InnertubeCatalog {
               artistList: [
                 TrackArtist(id: item.channelId, name: _artistName(item.author)),
               ],
-              coverUrl: item.thumbnails.isEmpty
-                  ? ''
-                  : item.thumbnails.last.url.toString(),
+              coverUrl: _videoCover(item.id.value),
               durationMs: _duration(item.duration),
             ),
-            cover: Cover(
-              url: item.thumbnails.isEmpty
-                  ? ''
-                  : item.thumbnails.last.url.toString(),
-            ),
+            cover: Cover(url: _videoCover(item.id.value)),
           )
         else if (type != 'track' && item is yt.SearchPlaylist)
           SearchItem(

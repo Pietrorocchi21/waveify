@@ -65,6 +65,34 @@ void main() {
     },
   );
 
+  test('YouTube credits are cleaned before strict lyrics matching', () async {
+    final dio = Dio();
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          expect(options.queryParameters['track_name'], 'Example');
+          expect(options.queryParameters['artist_name'], 'Artist');
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              data: record(synced: '[00:01]Example'),
+            ),
+          );
+        },
+      ),
+    );
+    final client = PublicLyricsClient(client: dio);
+    addTearDown(client.close);
+    final result = await client.get(
+      track.copyWith(
+        id: 'BaW_jenozKc',
+        title: 'Artist - Example (Official Music Video)',
+        artists: 'ArtistVEVO',
+      ),
+    );
+    expect(result?.syncLevel, LyricsSyncLevel.lineLevel);
+  });
+
   test('rejects wrong duration even from exact endpoint', () async {
     final dio = Dio();
     dio.interceptors.add(
