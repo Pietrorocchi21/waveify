@@ -437,7 +437,30 @@ def main():
                       'smtp_password_present': bool(auth.get('smtp_pass')),
                       'sender_email_present': bool(auth.get('smtp_admin_email')),
                       'email_confirmation_required': not auth.get('mailer_autoconfirm', False)}
-            query = 'select timestamp, event_message from auth_logs order by timestamp desc limit 50'
+            # Validate the SMTP handshake and credentials without sending any message.
+            import smtplib
+            import socket
+            import ssl
+            try:
+                port = int(auth.get('smtp_port') or 587)
+                connection = (smtplib.SMTP_SSL(host, port, timeout=15, context=ssl.create_default_context())
+                              if port == 465 else smtplib.SMTP(host, port, timeout=15))
+                with connection as smtp:
+                    smtp.ehlo()
+                    if port != 465:
+                        smtp.starttls(context=ssl.create_default_context())
+                        smtp.ehlo()
+                    smtp.login(auth.get('smtp_user') or '', auth.get('smtp_pass') or '')
+                report['smtp_handshake'] = 'authenticated'
+            except smtplib.SMTPAuthenticationError:
+                report['smtp_handshake'] = 'credentials_rejected'
+            except (TimeoutError, socket.timeout):
+                report['smtp_handshake'] = 'connection_timeout'
+            except ssl.SSLError:
+                report['smtp_handshake'] = 'tls_error'
+            except (OSError, smtplib.SMTPException, ValueError):
+                report['smtp_handshake'] = 'connection_or_protocol_failure'
+            query = 'select timestamp, event_message, metadata from auth_logs order by timestamp desc limit 50'
             try:
                 logs = db.api('/analytics/endpoints/logs.all?sql=' + quote(query, safe=''))
                 rows = logs.get('result', []) if isinstance(logs, dict) else logs
