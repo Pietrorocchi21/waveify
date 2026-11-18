@@ -132,6 +132,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
+                        selectedColor: theme.colorScheme.primary,
+                        checkmarkColor: theme.colorScheme.onPrimary,
+                        labelStyle: theme.textTheme.labelLarge?.copyWith(
+                          color: _source == source.$1
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurface,
+                        ),
                         label: Text(
                           source.$2 == 'YouTube' ? source.$2 : t(source.$2),
                         ),
@@ -163,6 +170,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: ChoiceChip(
+                      selectedColor: theme.colorScheme.primary,
+                      checkmarkColor: theme.colorScheme.onPrimary,
+                      labelStyle: theme.textTheme.labelLarge?.copyWith(
+                        color: _type == entry.$1
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onSurface,
+                      ),
                       label: Text(t(entry.$2)),
                       selected: _type == entry.$1,
                       onSelected: (_) {
