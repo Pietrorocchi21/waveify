@@ -263,11 +263,18 @@ class PlayerController extends Notifier<PlayerState> {
     }
   }
 
-  Future<void> _loadAndPlay(Track track, {Duration? initialPosition}) async {
+  Future<void> _loadAndPlay(
+    Track track, {
+    Duration? initialPosition,
+    bool skipOnError = false,
+  }) async {
     _telemetry.startTrack(track, state.playbackContext);
 
+    var openingAudio = false;
     try {
       final stream = await _resolveStream(track);
+      if (state.currentTrack?.id != track.id) return;
+      openingAudio = true;
       final mediaItem = MediaItem(
         id: track.id,
         title: track.title,
@@ -290,7 +297,15 @@ class PlayerController extends Notifier<PlayerState> {
         pitch: _semitoneMultiplier(pitch),
       );
     } catch (err) {
-      await _handlePlaybackError(track.id, '$err');
+      final stage = openingAudio ? 'Audio player' : 'Stream resolver';
+      final message = '$stage: ${err.runtimeType}';
+      if (skipOnError) {
+        await _handlePlaybackError(track.id, message);
+      } else if (state.currentTrack?.id == track.id) {
+        await _handler.pause();
+        if (state.currentTrack?.id != track.id) return;
+        state = state.copyWith(status: PlayerStatus.error, error: message);
+      }
     }
   }
 
@@ -346,7 +361,13 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   Future<void> resume() async {
-    if (state.currentTrack == null) return;
+    final track = state.currentTrack;
+    if (track == null) return;
+    if (state.status == PlayerStatus.error) {
+      state = state.copyWith(status: PlayerStatus.loading, clearError: true);
+      await _loadAndPlay(track);
+      return;
+    }
     state = state.copyWith(status: PlayerStatus.playing, clearError: true);
     await _handler.play();
   }
@@ -402,7 +423,7 @@ class PlayerController extends Notifier<PlayerState> {
       clearError: true,
     );
 
-    await _loadAndPlay(nextTrack);
+    await _loadAndPlay(nextTrack, skipOnError: isAutoEnd);
     _maybeExtendQueue(_sessionId, nextTrack.id, nextIndex, state.queue.length);
   }
 
@@ -755,7 +776,7 @@ class PlayerController extends Notifier<PlayerState> {
     }
 
     state = state.copyWith(status: PlayerStatus.error, error: message);
-    await skipNext();
+    await skipNext(isAutoEnd: true);
   }
 
   int? _computeNextIndex({bool isAutoEnd = false}) {
