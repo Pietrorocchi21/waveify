@@ -38,7 +38,13 @@ class SettingsController extends Notifier<AppSettings> {
   AppSettings build() => const AppSettings();
 
   Future<void> init() async {
-    state = await AppSettings.load();
+    final settings = await AppSettings.load();
+    final locale = supportedLocales.contains(settings.locale)
+        ? settings.locale
+        : 'en';
+    await Translations.load('en');
+    await Translations.load(locale);
+    state = settings.copyWith(locale: locale);
   }
 
   Future<void> update(AppSettings next) async {
@@ -52,7 +58,15 @@ class SettingsController extends Notifier<AppSettings> {
   Future<void> setAccent(AccentVariant variant) =>
       update(_copyWith(accentVariant: variant));
 
-  Future<void> setLocale(String locale) => update(_copyWith(locale: locale));
+  int _localeRequest = 0;
+
+  Future<void> setLocale(String locale) async {
+    if (!supportedLocales.contains(locale)) return;
+    final request = ++_localeRequest;
+    await Future.wait([Translations.load('en'), Translations.load(locale)]);
+    if (request != _localeRequest) return;
+    await update(_copyWith(locale: locale));
+  }
 
   Future<void> setVolume(double volume) =>
       update(_copyWith(volume: volume.clamp(0.0, 1.0)));
@@ -184,12 +198,13 @@ final translationsProvider = FutureProvider<(Translations, Translations)>((
 
 /// The translator for the current locale, with an English fallback.
 final translatorProvider = Provider<Translator>((ref) {
-  return ref
-      .watch(translationsProvider)
-      .maybeWhen(
-        data: (pair) => Translator(pair.$1, fallback: pair.$2),
-        orElse: () => Translator(Translations('en', const {})),
-      );
+  final locale = ref.watch(localeProvider);
+  final loaded = ref.watch(translationsProvider).asData?.value;
+  final fallback = Translations.cached('en') ?? Translations('en', const {});
+  return Translator(
+    Translations.cached(locale) ?? fallback,
+    fallback: loaded?.$2 ?? fallback,
+  );
 });
 
 /// The auth session store.

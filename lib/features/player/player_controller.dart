@@ -306,7 +306,8 @@ class PlayerController extends Notifier<PlayerState> {
       );
     }
 
-    if (track.id.startsWith('audius:') ||
+    if (StreamResolver.toVideoId(track.id) != null ||
+        track.id.startsWith('audius:') ||
         track.sourceUrl.isNotEmpty ||
         track.id.startsWith('https://') ||
         track.id.startsWith('http://') ||

@@ -74,14 +74,7 @@ class StreamResolver {
     if (videoId != null) {
       final client = youtube ?? yt.YoutubeExplode();
       try {
-        final manifest = await client.videos.streamsClient
-            .getManifest(videoId)
-            .timeout(const Duration(seconds: 20));
-        final streams = manifest.audioOnly.toList()
-          ..sort(
-            (a, b) =>
-                b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond),
-          );
+        final streams = await _youtubeAudio(client, videoId);
         if (streams.isEmpty) {
           throw const InnertubeException(
             'This video has no accessible audio stream.',
@@ -119,6 +112,38 @@ class StreamResolver {
       ),
     );
   }
+
+  Future<List<yt.AudioOnlyStreamInfo>> _youtubeAudio(
+    yt.YoutubeExplode client,
+    String videoId,
+  ) async {
+    try {
+      final direct = await client.videos.streamsClient
+          .getManifest(
+            videoId,
+            ytClients: [yt.YoutubeApiClient.androidSdkless],
+            requireWatchPage: false,
+          )
+          .timeout(const Duration(seconds: 8));
+      if (direct.audioOnly.isNotEmpty) return _rankAudio(direct.audioOnly);
+    } catch (_) {
+      // Some public videos require the library's standard watch-page flow.
+    }
+    final manifest = await client.videos.streamsClient
+        .getManifest(videoId)
+        .timeout(const Duration(seconds: 12));
+    return _rankAudio(manifest.audioOnly);
+  }
+
+  List<yt.AudioOnlyStreamInfo> _rankAudio(
+    Iterable<yt.AudioOnlyStreamInfo> streams,
+  ) => streams.toList()
+    ..sort((left, right) {
+      final leftMp4 = left.container.name == 'mp4';
+      final rightMp4 = right.container.name == 'mp4';
+      if (leftMp4 != rightMp4) return leftMp4 ? -1 : 1;
+      return right.bitrate.bitsPerSecond.compareTo(left.bitrate.bitsPerSecond);
+    });
 
   static String? toVideoId(String id) =>
       id.length == 11 && RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(id) ? id : null;

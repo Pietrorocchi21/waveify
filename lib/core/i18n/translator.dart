@@ -25,6 +25,8 @@ class Translations {
 
   static final Map<String, Translations> _cache = {};
 
+  static Translations? cached(String locale) => _cache[locale];
+
   /// Loads (and caches) the translation table for a locale.
   static Future<Translations> load(String locale) async {
     final cached = _cache[locale];
@@ -66,7 +68,7 @@ class Translations {
 /// Mirrors `createTranslatorSync` in `src/languages/translator.ts`.
 class Translator {
   Translator(this.current, {Translations? fallback})
-      : _fallback = fallback ?? current;
+    : _fallback = fallback ?? current;
 
   final Translations current;
   final Translations? _fallback;
@@ -78,7 +80,8 @@ class Translator {
     if (vars != null && vars['count'] is num) {
       final count = (vars['count'] as num).toDouble();
       final category = _pluralCategory(count);
-      template = current.lookup('${key}_$category') ??
+      template =
+          current.lookup('${key}_$category') ??
           current.lookup('${key}_plural') ??
           _fallback?.lookup('${key}_$category') ??
           _fallback?.lookup('${key}_plural');

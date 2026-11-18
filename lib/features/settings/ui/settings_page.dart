@@ -97,7 +97,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               const Divider(height: 1),
               ListTile(
-                title: const Text('Language'),
+                title: Text(t('settings.language.label')),
                 trailing: DropdownButton<String>(
                   value: settings.locale,
                   underline: const SizedBox.shrink(),
@@ -214,8 +214,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             children: [
               ListTile(
                 leading: const Icon(Icons.keyboard_rounded),
-                title: Text(t('settings.shortcuts.title')),
-                subtitle: Text(t('settings.shortcuts.desc')),
+                title: Text(t('settings.tabs.shortcuts')),
+                subtitle: Text(t('settings.shortcuts.description')),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
