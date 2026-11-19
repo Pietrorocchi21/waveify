@@ -91,7 +91,7 @@ class StreamResolver {
           ..sort((left, right) {
             final leftHeight = left.videoResolution.height;
             final rightHeight = right.videoResolution.height;
-            if (leftHeight <= 480 && rightHeight <= 480) {
+            if (leftHeight <= 360 && rightHeight <= 360) {
               return rightHeight.compareTo(leftHeight);
             }
             return leftHeight.compareTo(rightHeight);
@@ -222,6 +222,9 @@ class StreamResolver {
     Iterable<yt.AudioOnlyStreamInfo> streams,
   ) => streams.toList()
     ..sort((left, right) {
+      if (left.isThrottled != right.isThrottled) {
+        return left.isThrottled ? 1 : -1;
+      }
       final leftMp4 = left.container.name == 'mp4';
       final rightMp4 = right.container.name == 'mp4';
       if (leftMp4 != rightMp4) return leftMp4 ? -1 : 1;

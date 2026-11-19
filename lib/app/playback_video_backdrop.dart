@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart' as media;
@@ -51,6 +52,9 @@ class _MutedVideoState extends ConsumerState<_MutedVideo> {
   media.Player? _player;
   VideoController? _controller;
   StreamSubscription<String>? _errors;
+  StreamSubscription<PlaybackState>? _audio;
+  Timer? _videoStartup;
+  Timer? _audioStall;
   bool _ready = false;
   bool _syncing = false;
   bool _failed = false;
@@ -60,8 +64,21 @@ class _MutedVideoState extends ConsumerState<_MutedVideo> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_open());
+    final audio = ref.read(audioHandlerProvider);
+    _audio = audio.playbackState.listen((state) {
+      if (state.processingState == AudioProcessingState.buffering &&
+          state.playing) {
+        _audioStall ??= Timer(const Duration(seconds: 2), _hide);
+      } else {
+        _audioStall?.cancel();
+        _audioStall = null;
+      }
+      if (state.processingState == AudioProcessingState.ready &&
+          state.playing) {
+        _videoStartup ??= Timer(const Duration(milliseconds: 1200), () {
+          if (mounted && !_failed) unawaited(_open());
+        });
+      }
     });
   }
 
@@ -138,6 +155,9 @@ class _MutedVideoState extends ConsumerState<_MutedVideo> {
 
   @override
   void dispose() {
+    _videoStartup?.cancel();
+    _audioStall?.cancel();
+    unawaited(_audio?.cancel());
     unawaited(_errors?.cancel());
     final player = _player;
     _player = null;
