@@ -60,7 +60,9 @@ class PlayerController extends Notifier<PlayerState> {
     _handler.onSkipNext = () async => skipNext();
     _handler.onSkipPrevious = () async => skipPrevious();
 
-    _handler.playbackState.listen(_onPlaybackState);
+    final playbackSubscription = _handler.playbackState.listen(
+      _onPlaybackState,
+    );
 
     final settings = ref.read(settingsProvider);
     _telemetry.volume = settings.volume;
@@ -83,6 +85,7 @@ class PlayerController extends Notifier<PlayerState> {
     });
 
     ref.onDispose(() {
+      unawaited(playbackSubscription.cancel());
       _radioAppendTimer?.cancel();
       _handler.onTrackEnded = null;
     });
@@ -307,7 +310,7 @@ class PlayerController extends Notifier<PlayerState> {
             mediaItem: mediaItem,
             initialPosition: initialPosition,
             speed: speed,
-            pitch: pitch,
+            pitch: _semitoneMultiplier(pitch),
           );
           break;
         } catch (_) {

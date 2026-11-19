@@ -1,9 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:just_audio/just_audio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../media/audius/audius_catalog.dart';
+import '../media/innertube/stream_resolver.dart';
+import '../local/local_library_store.dart';
+import '../providers/app_providers.dart';
+import '../../features/player/audio_handler.dart';
+import '../../features/player/player_controller.dart';
+import '../../features/player/player_state.dart';
 import '../../features/lyrics/public_lyrics_client.dart';
 import '../../features/lyrics/lyrics_parser.dart';
 import '../../models/track.dart';
@@ -18,7 +24,20 @@ Future<bool> runNetworkSelfTest(String output) async {
   final checks = report['checks'] as Map<String, dynamic>;
   final catalog = AudiusCatalog();
   final lyrics = PublicLyricsClient();
-  final player = AudioPlayer();
+  final audio = WaveifyAudioHandler();
+  final directory = await Directory.systemTemp.createTemp(
+    'waveify-stream-check-',
+  );
+  final container = ProviderContainer(
+    overrides: [
+      audioHandlerProvider.overrideWithValue(audio),
+      streamResolverProvider.overrideWithValue(StreamResolver(audius: catalog)),
+      localLibraryStoreProvider.overrideWithValue(
+        LocalLibraryStore(directory: directory),
+      ),
+      useCloudAccountProvider.overrideWith((ref) => false),
+    ],
+  );
   var stage = 'online_search';
   try {
     final results = await catalog.search('chill', type: 'track');
@@ -26,14 +45,18 @@ Future<bool> runNetworkSelfTest(String output) async {
     checks[stage] = 'passed';
     stage = 'native_stream_decode';
     final track = results.first.track!;
-    final stream = await catalog.resolveStream(track.id);
-    final duration = await player
-        .setUrl(stream.url, headers: stream.headers)
-        .timeout(const Duration(seconds: 40));
-    if (duration == null || duration.inSeconds < 5) {
+    final controller = container.read(playerControllerProvider.notifier);
+    await controller.playTrack(track).timeout(const Duration(seconds: 45));
+    final playback = container.read(playerControllerProvider);
+    if (playback.status == PlayerStatus.error ||
+        !audio.playbackState.value.playing) {
+      throw StateError(playback.error ?? 'Playback did not start.');
+    }
+    final duration = audio.mediaItem.value?.duration ?? Duration.zero;
+    if (duration.inSeconds < 5) {
       throw StateError('No streamed duration.');
     }
-    await player
+    await controller
         .seek(const Duration(seconds: 2))
         .timeout(const Duration(seconds: 10));
     checks[stage] = 'passed';
@@ -71,7 +94,9 @@ Future<bool> runNetworkSelfTest(String output) async {
   } finally {
     catalog.close();
     lyrics.close();
-    await player.dispose();
+    container.dispose();
+    await audio.dispose();
+    await directory.delete(recursive: true);
     final file = File(output);
     await file.parent.create(recursive: true);
     await file.writeAsString(
