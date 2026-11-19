@@ -79,7 +79,9 @@ class FullscreenPlayerPage extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: const WaveifyWordmark(),
+          title: MediaQuery.sizeOf(context).width < 420
+              ? const WaveifyMark()
+              : const WaveifyWordmark(),
           actions: [
             IconButton(
               tooltip: t('player.lyrics'),
