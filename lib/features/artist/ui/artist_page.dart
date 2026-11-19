@@ -5,12 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../models/catalog.dart';
 import '../../../shared/widgets/common.dart';
+import '../../../shared/widgets/artwork_stage.dart';
 import '../../../shared/widgets/track_widgets.dart';
 import '../../player/player_controller.dart';
 
 /// Loads an artist page.
-final artistProvider =
-    FutureProvider.family<ArtistDetails, String>((ref, id) async {
+final artistProvider = FutureProvider.family<ArtistDetails, String>((
+  ref,
+  id,
+) async {
   return ref.read(catalogProvider).getArtist(id);
 });
 
@@ -100,13 +103,16 @@ class ArtistPage extends ConsumerWidget {
                               onPressed: data.tracks.isEmpty
                                   ? null
                                   : () => ref
-                                      .read(playerControllerProvider.notifier)
-                                      .playTrack(
-                                        data.tracks.first,
-                                        queue: data.tracks,
-                                        context: 'artist:${data.id}',
-                                      ),
-                              icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                                        .read(playerControllerProvider.notifier)
+                                        .playTrack(
+                                          data.tracks.first,
+                                          queue: data.tracks,
+                                          context: 'artist:${data.id}',
+                                        ),
+                              icon: const Icon(
+                                Icons.play_arrow_rounded,
+                                size: 18,
+                              ),
                               label: Text(t('artist.play')),
                             ),
                             OutlinedButton.icon(
@@ -142,7 +148,27 @@ class ArtistPage extends ConsumerWidget {
             ],
             if (data.albums.isNotEmpty) ...[
               SectionHeader(title: t('artist.albums')),
-              _ReleaseRow(releases: data.albums, artistId: data.id),
+              ArtworkStage(
+                key: ValueKey(data.id),
+                captionOnArtwork: true,
+                actionLabel: t('artist.open_album'),
+                actionIcon: Icons.album_outlined,
+                items: [
+                  for (final release in data.albums)
+                    StageArtwork(
+                      id: release.id,
+                      title: release.title,
+                      subtitle: release.year?.toString() ?? '',
+                      coverUrl: release.cover?.url ?? '',
+                      onActivate: () => context.push(
+                        Uri(
+                          path: '/collection',
+                          queryParameters: {'type': 'album', 'id': release.id},
+                        ).toString(),
+                      ),
+                    ),
+                ],
+              ),
             ],
             if (data.singles.isNotEmpty) ...[
               SectionHeader(title: t('artist.singles')),
@@ -176,11 +202,10 @@ class _ReleaseRow extends StatelessWidget {
             title: release.title,
             subtitle: release.year?.toString() ?? '',
             coverUrl: release.cover?.url ?? '',
-            onTap: () =>
-                context.push(
-                  '/collection?type=album'
-                  '&id=${Uri.encodeQueryComponent(release.id)}',
-                ),
+            onTap: () => context.push(
+              '/collection?type=album'
+              '&id=${Uri.encodeQueryComponent(release.id)}',
+            ),
           );
         },
       ),

@@ -379,6 +379,13 @@ void main() {
       await tester.tap(find.byIcon(Icons.chevron_right_rounded));
       await tester.pumpAndSettle();
       expect(find.text('Track 0'), findsOneWidget);
+      await tester.drag(
+        find.byType(PageView),
+        const Offset(-400, 0),
+        kind: ui.PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Track 1'), findsOneWidget);
       expect(activated, 1);
     },
   );

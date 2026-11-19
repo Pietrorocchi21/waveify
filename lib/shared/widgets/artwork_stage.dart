@@ -1,3 +1,6 @@
+import 'dart:ui' show PointerDeviceKind;
+
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,12 +31,14 @@ class ArtworkStage extends ConsumerStatefulWidget {
     required this.items,
     this.initialIndex = 0,
     required this.actionLabel,
+    this.actionIcon = Icons.play_arrow_rounded,
     this.large = false,
     this.captionOnArtwork = false,
   });
   final List<StageArtwork> items;
   final int initialIndex;
   final String actionLabel;
+  final IconData actionIcon;
   final bool large;
   final bool captionOnArtwork;
   @override
@@ -131,235 +136,267 @@ class _ArtworkStageState extends ConsumerState<ArtworkStage> {
               height: coverSize + (wide ? 64 : 42),
               child: Stack(
                 children: [
-                  PageView.builder(
-                    key: ValueKey(fraction),
-                    controller: _controller,
-                    onPageChanged: (page) => setState(() => _page = page),
-                    itemCount: widget.items.length == 1 ? 1 : null,
-                    itemBuilder: (context, page) {
-                      final item = widget.items[page % widget.items.length];
-                      return AnimatedBuilder(
-                        animation: _controller,
-                        builder: (context, child) {
-                          final position =
-                              _controller.hasClients &&
-                                  _controller.position.hasContentDimensions
-                              ? _controller.page ?? _page.toDouble()
-                              : _page.toDouble();
-                          final distance = (page - position).clamp(-1.5, 1.5);
-                          final active =
-                              page == _page || widget.items.length == 1;
-                          final scale = reduced
-                              ? 1.0
-                              : 1 -
-                                    distance.abs().clamp(0, 1) *
-                                        (1 - DesignTokens.carouselItemScale);
-                          final transform = Matrix4.identity()
-                            ..setEntry(3, 2, DesignTokens.carouselPerspective)
-                            ..translateByDouble(
-                              wide ? -distance * coverSize * 0.80 : 0,
-                              wide ? distance.abs() * 10 : 0,
-                              0,
-                              1,
-                            );
-                          if (!reduced) {
-                            transform.rotateY(
-                              -distance * DesignTokens.carouselRotation,
-                            );
-                          }
-                          return Center(
-                            child: Transform.scale(
-                              scale: scale,
-                              child: Transform(
-                                alignment: Alignment.center,
-                                transform: transform,
-                                child: Opacity(
-                                  opacity: active
-                                      ? 1
-                                      : DesignTokens.carouselItemOpacity,
-                                  child: SizedBox(
-                                    width: coverSize,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Semantics(
-                                          label: item.title,
-                                          selected: active,
-                                          button: true,
-                                          child: Tooltip(
-                                            message: active
-                                                ? item.actionLabel ??
-                                                      widget.actionLabel
-                                                : item.title,
-                                            child: Material(
-                                              color: Colors.transparent,
-                                              child: InkWell(
-                                                onFocusChange: (focused) =>
-                                                    setState(
-                                                      () => _focusedPage =
-                                                          focused ? page : null,
-                                                    ),
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                      DesignTokens.radiusLg,
-                                                    ),
-                                                onTap: active
-                                                    ? item.onActivate
-                                                    : () => _go(page, reduced),
-                                                child: Container(
-                                                  width: coverSize,
-                                                  height: coverSize,
-                                                  decoration: BoxDecoration(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          DesignTokens.radiusLg,
-                                                        ),
-                                                    border: Border.all(
-                                                      color:
-                                                          _focusedPage == page
-                                                          ? theme
-                                                                .colorScheme
-                                                                .primary
-                                                          : Colors.white
-                                                                .withValues(
-                                                                  alpha: active
-                                                                      ? 0.18
-                                                                      : 0.06,
-                                                                ),
-                                                      width:
-                                                          _focusedPage == page
-                                                          ? 2
-                                                          : 1,
-                                                    ),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.black
-                                                            .withValues(
-                                                              alpha: 0.5,
-                                                            ),
-                                                        blurRadius: 36,
-                                                        offset: const Offset(
-                                                          0,
-                                                          22,
-                                                        ),
+                  Focus(
+                    onKeyEvent: (_, event) {
+                      if (widget.items.length <= 1 || event is! KeyDownEvent) {
+                        return KeyEventResult.ignored;
+                      }
+                      if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                        _move(-1, reduced);
+                        return KeyEventResult.handled;
+                      }
+                      if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                        _move(1, reduced);
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: PageView.builder(
+                      scrollBehavior: ScrollConfiguration.of(context).copyWith(
+                        dragDevices: {
+                          ...ScrollConfiguration.of(context).dragDevices,
+                          PointerDeviceKind.mouse,
+                        },
+                      ),
+                      key: ValueKey(fraction),
+                      controller: _controller,
+                      onPageChanged: (page) => setState(() => _page = page),
+                      itemCount: widget.items.length == 1 ? 1 : null,
+                      itemBuilder: (context, page) {
+                        final item = widget.items[page % widget.items.length];
+                        return AnimatedBuilder(
+                          animation: _controller,
+                          builder: (context, child) {
+                            final position =
+                                _controller.hasClients &&
+                                    _controller.position.hasContentDimensions
+                                ? _controller.page ?? _page.toDouble()
+                                : _page.toDouble();
+                            final distance = (page - position).clamp(-1.5, 1.5);
+                            final active =
+                                page == _page || widget.items.length == 1;
+                            final scale = reduced
+                                ? 1.0
+                                : 1 -
+                                      distance.abs().clamp(0, 1) *
+                                          (1 - DesignTokens.carouselItemScale);
+                            final transform = Matrix4.identity()
+                              ..setEntry(3, 2, DesignTokens.carouselPerspective)
+                              ..translateByDouble(
+                                wide && !reduced
+                                    ? -distance * coverSize * 0.15
+                                    : 0,
+                                wide ? distance.abs() * 10 : 0,
+                                0,
+                                1,
+                              );
+                            if (!reduced) {
+                              transform.rotateY(
+                                -distance * DesignTokens.carouselRotation,
+                              );
+                            }
+                            return Center(
+                              child: Transform.scale(
+                                scale: scale,
+                                child: Transform(
+                                  alignment: Alignment.center,
+                                  transform: transform,
+                                  child: Opacity(
+                                    opacity: active
+                                        ? 1
+                                        : DesignTokens.carouselItemOpacity,
+                                    child: SizedBox(
+                                      width: coverSize,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Semantics(
+                                            label: item.title,
+                                            selected: active,
+                                            button: true,
+                                            child: Tooltip(
+                                              message: active
+                                                  ? item.actionLabel ??
+                                                        widget.actionLabel
+                                                  : item.title,
+                                              child: Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  onFocusChange: (focused) =>
+                                                      setState(
+                                                        () => _focusedPage =
+                                                            focused
+                                                            ? page
+                                                            : null,
                                                       ),
-                                                      if (active)
-                                                        BoxShadow(
-                                                          color: tint.withValues(
-                                                            alpha:
-                                                                widget
-                                                                    .captionOnArtwork
-                                                                ? 0.38
-                                                                : 0.12,
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        DesignTokens.radiusLg,
+                                                      ),
+                                                  onTap: active
+                                                      ? item.onActivate
+                                                      : () =>
+                                                            _go(page, reduced),
+                                                  child: Container(
+                                                    width: coverSize,
+                                                    height: coverSize,
+                                                    decoration: BoxDecoration(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            DesignTokens
+                                                                .radiusLg,
                                                           ),
-                                                          blurRadius: 60,
-                                                          spreadRadius: -12,
-                                                        ),
-                                                    ],
-                                                  ),
-                                                  child: ClipRRect(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          DesignTokens.radiusLg,
-                                                        ),
-                                                    child: Stack(
-                                                      fit: StackFit.expand,
-                                                      children: [
-                                                        CoverImage(
-                                                          url: item.coverUrl,
-                                                          size: coverSize,
-                                                        ),
-                                                        if (active &&
-                                                            widget
-                                                                .captionOnArtwork)
-                                                          Align(
-                                                            alignment: Alignment
-                                                                .bottomCenter,
-                                                            child: Container(
-                                                              width: double
-                                                                  .infinity,
-                                                              padding:
-                                                                  const EdgeInsets.fromLTRB(
-                                                                    18,
-                                                                    36,
-                                                                    18,
-                                                                    15,
+                                                      border: Border.all(
+                                                        color:
+                                                            _focusedPage == page
+                                                            ? theme
+                                                                  .colorScheme
+                                                                  .primary
+                                                            : Colors.white
+                                                                  .withValues(
+                                                                    alpha:
+                                                                        active
+                                                                        ? 0.18
+                                                                        : 0.06,
                                                                   ),
-                                                              decoration: const BoxDecoration(
-                                                                gradient: LinearGradient(
-                                                                  begin: Alignment
-                                                                      .topCenter,
-                                                                  end: Alignment
-                                                                      .bottomCenter,
-                                                                  colors: [
-                                                                    Colors
-                                                                        .transparent,
-                                                                    Color(
-                                                                      0xE8000510,
+                                                        width:
+                                                            _focusedPage == page
+                                                            ? 2
+                                                            : 1,
+                                                      ),
+                                                      boxShadow: [
+                                                        BoxShadow(
+                                                          color: Colors.black
+                                                              .withValues(
+                                                                alpha: 0.5,
+                                                              ),
+                                                          blurRadius: 36,
+                                                          offset: const Offset(
+                                                            0,
+                                                            22,
+                                                          ),
+                                                        ),
+                                                        if (active)
+                                                          BoxShadow(
+                                                            color: tint.withValues(
+                                                              alpha:
+                                                                  widget
+                                                                      .captionOnArtwork
+                                                                  ? 0.38
+                                                                  : 0.12,
+                                                            ),
+                                                            blurRadius: 60,
+                                                            spreadRadius: -12,
+                                                          ),
+                                                      ],
+                                                    ),
+                                                    child: ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            DesignTokens
+                                                                .radiusLg,
+                                                          ),
+                                                      child: Stack(
+                                                        fit: StackFit.expand,
+                                                        children: [
+                                                          CoverImage(
+                                                            url: item.coverUrl,
+                                                            size: coverSize,
+                                                          ),
+                                                          if (active &&
+                                                              widget
+                                                                  .captionOnArtwork)
+                                                            Align(
+                                                              alignment: Alignment
+                                                                  .bottomCenter,
+                                                              child: Container(
+                                                                width: double
+                                                                    .infinity,
+                                                                padding:
+                                                                    const EdgeInsets.fromLTRB(
+                                                                      18,
+                                                                      36,
+                                                                      18,
+                                                                      15,
+                                                                    ),
+                                                                decoration: const BoxDecoration(
+                                                                  gradient: LinearGradient(
+                                                                    begin: Alignment
+                                                                        .topCenter,
+                                                                    end: Alignment
+                                                                        .bottomCenter,
+                                                                    colors: [
+                                                                      Colors
+                                                                          .transparent,
+                                                                      Color(
+                                                                        0xE8000510,
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                                child: Column(
+                                                                  mainAxisSize:
+                                                                      MainAxisSize
+                                                                          .min,
+                                                                  crossAxisAlignment:
+                                                                      CrossAxisAlignment
+                                                                          .start,
+                                                                  children: [
+                                                                    Text(
+                                                                      item.title,
+                                                                      maxLines:
+                                                                          1,
+                                                                      overflow:
+                                                                          TextOverflow
+                                                                              .ellipsis,
+                                                                      style: theme
+                                                                          .textTheme
+                                                                          .headlineSmall
+                                                                          ?.copyWith(
+                                                                            color:
+                                                                                Colors.white,
+                                                                            fontWeight:
+                                                                                FontWeight.w600,
+                                                                          ),
+                                                                    ),
+                                                                    Text(
+                                                                      item.subtitle,
+                                                                      maxLines:
+                                                                          1,
+                                                                      overflow:
+                                                                          TextOverflow
+                                                                              .ellipsis,
+                                                                      style: theme
+                                                                          .textTheme
+                                                                          .bodyMedium
+                                                                          ?.copyWith(
+                                                                            color:
+                                                                                Colors.white70,
+                                                                          ),
                                                                     ),
                                                                   ],
                                                                 ),
                                                               ),
-                                                              child: Column(
-                                                                mainAxisSize:
-                                                                    MainAxisSize
-                                                                        .min,
-                                                                crossAxisAlignment:
-                                                                    CrossAxisAlignment
-                                                                        .start,
-                                                                children: [
-                                                                  Text(
-                                                                    item.title,
-                                                                    maxLines: 1,
-                                                                    overflow:
-                                                                        TextOverflow
-                                                                            .ellipsis,
-                                                                    style: theme
-                                                                        .textTheme
-                                                                        .headlineSmall
-                                                                        ?.copyWith(
-                                                                          color:
-                                                                              Colors.white,
-                                                                          fontWeight:
-                                                                              FontWeight.w600,
-                                                                        ),
-                                                                  ),
-                                                                  Text(
-                                                                    item.subtitle,
-                                                                    maxLines: 1,
-                                                                    overflow:
-                                                                        TextOverflow
-                                                                            .ellipsis,
-                                                                    style: theme
-                                                                        .textTheme
-                                                                        .bodyMedium
-                                                                        ?.copyWith(
-                                                                          color:
-                                                                              Colors.white70,
-                                                                        ),
-                                                                  ),
-                                                                ],
-                                                              ),
                                                             ),
-                                                          ),
-                                                      ],
+                                                        ],
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
-                      );
-                    },
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -411,7 +448,7 @@ class _ArtworkStageState extends ConsumerState<ArtworkStage> {
                   ),
                 TextButton.icon(
                   onPressed: selected.onActivate,
-                  icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                  icon: Icon(widget.actionIcon, size: 18),
                   label: Text(selected.actionLabel ?? widget.actionLabel),
                 ),
                 if (widget.items.length > 1)
