@@ -1,3 +1,5 @@
+import 'package:waveify/features/player/ui/fullscreen_player_page.dart';
+
 import '../shared/widgets/listening_backdrop.dart';
 import 'playback_video_backdrop.dart';
 import 'listening_room.dart';
@@ -71,6 +73,8 @@ const List<AppDestination> appDestinations = [
   ),
 ];
 
+final _roomLyricsProvider = StateProvider<bool>((ref) => false);
+
 /// Shared frame reserves real layout space for the dock and safe areas.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
@@ -84,10 +88,33 @@ class AppShell extends ConsumerWidget {
     final width = MediaQuery.sizeOf(context).width;
     final wide = width >= 900;
     final room = width >= 1120;
+    final hasTrack = ref.watch(
+      playerControllerProvider.select((s) => s.currentTrack != null),
+    );
+    final showLyrics = room && hasTrack && ref.watch(_roomLyricsProvider);
     final showQueue =
         room &&
-        path == '/' &&
+        (path == '/' || path == '/player') &&
         ref.watch(playerControllerProvider.select((s) => s.queue.isNotEmpty));
+    void toggleLyrics() {
+      if (!room) {
+        showLyricsSheet(context);
+        return;
+      }
+      final side = ref.read(_roomLyricsProvider.notifier);
+      side.state = !side.state;
+    }
+
+    void togglePlayer() {
+      if (path != '/player') {
+        context.push('/player');
+      } else if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/');
+      }
+    }
+
     if (ref.watch(overlayServiceProvider).isOpen) {
       return AmbientBackground(
         accentColor: accent,
@@ -169,12 +196,18 @@ class AppShell extends ConsumerWidget {
                   child: child,
                 ),
               ),
-              if (showQueue)
+              if (showQueue || showLyrics)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(0, 12, 18, 12),
                   child: SizedBox(
                     width: (width * .212).clamp(235.0, 330.0),
-                    child: const ListeningRoomQueue(),
+                    child: showLyrics
+                        ? const GlassPanel(
+                            borderRadius: 24,
+                            borderOpacity: .18,
+                            child: PlayerLyrics(),
+                          )
+                        : const ListeningRoomQueue(),
                   ),
                 ),
             ],
@@ -186,12 +219,16 @@ class AppShell extends ConsumerWidget {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1500),
-                child: const ListeningRoomDock(),
+                child: ListeningRoomDock(
+                  onOpen: togglePlayer,
+                  onLyrics: toggleLyrics,
+                  showingLyrics: showLyrics,
+                ),
               ),
             ),
           )
         else
-          const _MiniPlayerWrapper(),
+          _MiniPlayerWrapper(onOpen: togglePlayer),
       ],
     );
     return AmbientBackground(
@@ -205,6 +242,8 @@ class AppShell extends ConsumerWidget {
           children: [
             const PlaybackVideoBackdrop(),
             ShortcutScope(
+              onToggleFullscreen: togglePlayer,
+              onToggleLyrics: toggleLyrics,
               child: Scaffold(
                 backgroundColor: Colors.transparent,
                 body: SafeArea(bottom: false, child: main),
@@ -278,7 +317,9 @@ class AppShell extends ConsumerWidget {
 }
 
 class _MiniPlayerWrapper extends ConsumerWidget {
-  const _MiniPlayerWrapper();
+  const _MiniPlayerWrapper({required this.onOpen});
+
+  final VoidCallback onOpen;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final track = ref.watch(
@@ -300,7 +341,7 @@ class _MiniPlayerWrapper extends ConsumerWidget {
             block: CustomizationBlock.miniplayer,
             child: GlassPlayerBar(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              child: MiniPlayer(onOpen: () => context.push('/player')),
+              child: MiniPlayer(onOpen: onOpen),
             ),
           ),
         ),

@@ -31,7 +31,9 @@ void showLyricsSheet(BuildContext context) => showModalBottomSheet<void>(
 /// Focused listening view. Existing detail tools open on demand instead of
 /// taking half the canvas away from the artwork.
 class FullscreenPlayerPage extends ConsumerWidget {
-  const FullscreenPlayerPage({super.key});
+  const FullscreenPlayerPage({super.key, this.embedded = false});
+
+  final bool embedded;
 
   void _openPanel(BuildContext context, Widget child) {
     showModalBottomSheet<void>(
@@ -74,118 +76,129 @@ class FullscreenPlayerPage extends ConsumerWidget {
         (s) => s.likedTracks.any((item) => item.id == track.id),
       ),
     );
-    return AmbientBackground(
-      accentColor: ref.watch(ambientAccentProvider),
-      child: Scaffold(
+    final page = Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: MediaQuery.sizeOf(context).width < 420
-              ? const WaveifyMark()
-              : const WaveifyWordmark(),
-          actions: [
-            IconButton(
-              tooltip: t('player.lyrics'),
-              onPressed: () => _openPanel(context, const _LyricsPanel()),
-              icon: const Icon(Icons.lyrics_outlined),
-            ),
-            IconButton(
-              tooltip: t('player.speed_pitch'),
-              onPressed: () => _openPanel(context, const _SpeedPitchPanel()),
-              icon: const Icon(Icons.tune_rounded),
-            ),
-            IconButton(
-              tooltip: t('player.queue'),
-              onPressed: () => showQueueSheet(context, ref),
-              icon: const Icon(Icons.queue_music_rounded),
-            ),
-          ],
-        ),
-        body: SafeArea(
-          top: false,
-          child: Column(
-            children: [
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) => SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                      ),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 20),
-                          child: ArtworkStage(
-                            key: ValueKey(
-                              tracks.map((item) => item.id).join('|'),
-                            ),
-                            items: [
-                              for (final item in tracks)
-                                StageArtwork(
-                                  id: item.id,
-                                  title: item.title,
-                                  subtitle: item.artists,
-                                  coverUrl: item.coverUrl,
-                                  actionLabel: t(
-                                    item.id == track.id && isPlaying
-                                        ? 'common.pause'
-                                        : 'common.play',
-                                  ),
-                                  onActivate: () => item.id == track.id
-                                      ? controller.togglePlayPause()
-                                      : controller.playTrack(
-                                          item,
-                                          queue: tracks,
-                                          index: tracks.indexOf(item),
-                                          preserveQueue: true,
-                                        ),
-                                ),
-                            ],
-                            initialIndex: playback.$3 < 0 ? 0 : playback.$3,
-                            actionLabel: t('common.play'),
-                            large: true,
+        leading: embedded
+            ? BackButton(
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/');
+                  }
+                },
+              )
+            : null,
+        title: MediaQuery.sizeOf(context).width < 420
+            ? const WaveifyMark()
+            : const WaveifyWordmark(),
+        actions: [
+          IconButton(
+            tooltip: t('player.lyrics'),
+            onPressed: () => _openPanel(context, const _LyricsPanel()),
+            icon: const Icon(Icons.lyrics_outlined),
+          ),
+          IconButton(
+            tooltip: t('player.speed_pitch'),
+            onPressed: () => _openPanel(context, const _SpeedPitchPanel()),
+            icon: const Icon(Icons.tune_rounded),
+          ),
+          IconButton(
+            tooltip: t('player.queue'),
+            onPressed: () => showQueueSheet(context, ref),
+            icon: const Icon(Icons.queue_music_rounded),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: ArtworkStage(
+                          key: ValueKey(
+                            tracks.map((item) => item.id).join('|'),
                           ),
+                          items: [
+                            for (final item in tracks)
+                              StageArtwork(
+                                id: item.id,
+                                title: item.title,
+                                subtitle: item.artists,
+                                coverUrl: item.coverUrl,
+                                actionLabel: t(
+                                  item.id == track.id && isPlaying
+                                      ? 'common.pause'
+                                      : 'common.play',
+                                ),
+                                onActivate: () => item.id == track.id
+                                    ? controller.togglePlayPause()
+                                    : controller.playTrack(
+                                        item,
+                                        queue: tracks,
+                                        index: tracks.indexOf(item),
+                                        preserveQueue: true,
+                                      ),
+                              ),
+                          ],
+                          initialIndex: playback.$3 < 0 ? 0 : playback.$3,
+                          actionLabel: t('common.play'),
+                          large: true,
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              if (StreamResolver.toVideoId(track.id) != null &&
-                  ref.watch(
-                    playerControllerProvider.select((s) => s.error != null),
-                  ))
-                TextButton.icon(
-                  onPressed: () => context.go(
-                    Uri(
-                      path: '/search',
-                      queryParameters: {
-                        'q': '${track.title} ${track.artists}'.trim(),
-                      },
-                    ).toString(),
-                  ),
-                  icon: const Icon(Icons.search_rounded, size: 18),
-                  label: Text(t('player.find_on_audius')),
+            ),
+            if (StreamResolver.toVideoId(track.id) != null &&
+                ref.watch(
+                  playerControllerProvider.select((s) => s.error != null),
+                ))
+              TextButton.icon(
+                onPressed: () => context.go(
+                  Uri(
+                    path: '/search',
+                    queryParameters: {
+                      'q': '${track.title} ${track.artists}'.trim(),
+                    },
+                  ).toString(),
                 ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (MediaQuery.sizeOf(context).width < 900)
-                    const ShuffleButton(),
-                  IconButton(
-                    tooltip: t(liked ? 'common.unlike' : 'common.like'),
-                    onPressed: () => ref
-                        .read(libraryControllerProvider.notifier)
-                        .toggleLike(track),
-                    icon: Icon(
-                      liked
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                    ),
-                  ),
-                  if (MediaQuery.sizeOf(context).width < 900)
-                    const RepeatButton(),
-                ],
+                icon: const Icon(Icons.search_rounded, size: 18),
+                label: Text(t('player.find_on_audius')),
               ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (MediaQuery.sizeOf(context).width < 900)
+                  const ShuffleButton(),
+                IconButton(
+                  tooltip: t(liked ? 'common.unlike' : 'common.like'),
+                  onPressed: () => ref
+                      .read(libraryControllerProvider.notifier)
+                      .toggleLike(track),
+                  icon: Icon(
+                    liked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                  ),
+                ),
+                if (MediaQuery.sizeOf(context).width < 900)
+                  const RepeatButton(),
+              ],
+            ),
+            if (!embedded)
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
                 child: Center(
@@ -201,10 +214,14 @@ class FullscreenPlayerPage extends ConsumerWidget {
                   ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
+    );
+    if (embedded) return page;
+    return AmbientBackground(
+      accentColor: ref.watch(ambientAccentProvider),
+      child: page,
     );
   }
 }
@@ -217,7 +234,7 @@ class _LyricsPanel extends StatelessWidget {
     return const GlassPanel(
       blur: 0,
       padding: EdgeInsets.zero,
-      child: _LyricsTab(),
+      child: PlayerLyrics(),
     );
   }
 }
@@ -235,8 +252,8 @@ class _SpeedPitchPanel extends StatelessWidget {
   }
 }
 
-class _LyricsTab extends ConsumerWidget {
-  const _LyricsTab();
+class PlayerLyrics extends ConsumerWidget {
+  const PlayerLyrics({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

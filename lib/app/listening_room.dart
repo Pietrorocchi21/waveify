@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../core/providers/app_providers.dart';
 import '../features/library/library_controller.dart';
@@ -103,7 +102,16 @@ class ListeningRoomQueue extends ConsumerWidget {
 }
 
 class ListeningRoomDock extends ConsumerWidget {
-  const ListeningRoomDock({super.key});
+  const ListeningRoomDock({
+    super.key,
+    required this.onOpen,
+    required this.onLyrics,
+    this.showingLyrics = false,
+  });
+
+  final VoidCallback onOpen;
+  final VoidCallback onLyrics;
+  final bool showingLyrics;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -135,7 +143,7 @@ class ListeningRoomDock extends ConsumerWidget {
             flex: 3,
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              onTap: () => context.push('/player'),
+              onTap: onOpen,
               child: Row(
                 children: [
                   GlassCover(url: track.coverUrl, size: 58, borderRadius: 12),
@@ -256,6 +264,13 @@ class ListeningRoomDock extends ConsumerWidget {
                       label: '${(state.volume * 100).round()}%',
                       onChanged: transport.setVolume,
                     ),
+                  ),
+                  IconButton(
+                    tooltip: t('player.lyrics'),
+                    isSelected: showingLyrics,
+                    icon: const Icon(Icons.lyrics_outlined),
+                    selectedIcon: const Icon(Icons.lyrics_rounded),
+                    onPressed: onLyrics,
                   ),
                   IconButton(
                     tooltip: t('player.queue'),

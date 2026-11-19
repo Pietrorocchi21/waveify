@@ -128,7 +128,9 @@ class PlaylistDetailPage extends ConsumerWidget {
     final detail = ref.watch(playlistDetailProvider(playlistId));
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         title: Text(
           detail.valueOrNull?.playlist.title ?? t('playlist.playlist'),
         ),

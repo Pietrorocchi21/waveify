@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:waveify/core/providers/app_providers.dart';
 import 'package:waveify/shared/widgets/common.dart';
+
 import 'profile_controller.dart';
 
 /// The leaderboard: the global one and the one of an artist.
@@ -44,10 +45,10 @@ class _LeaderboardPageState extends ConsumerState<LeaderboardPage> {
     final state = ref.watch(leaderboardControllerProvider);
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text(
-          widget.artistName ?? t('leaderboard.title'),
-        ),
+        backgroundColor: Colors.transparent,
+        title: Text(widget.artistName ?? t('leaderboard.title')),
       ),
       body: Column(
         children: [
@@ -79,50 +80,47 @@ class _LeaderboardPageState extends ConsumerState<LeaderboardPage> {
             child: state.isLoading && state.entries.isEmpty
                 ? const LoadingState()
                 : state.error != null && state.entries.isEmpty
-                    ? ErrorState(
-                        message: state.error!,
-                        onRetry: _load,
-                      )
-                    : state.entries.isEmpty
-                        ? EmptyState(
-                            icon: Icons.emoji_events_outlined,
-                            title: t('leaderboard.empty'),
-                          )
-                        : ListView.builder(
-                            itemCount: state.entries.length,
-                            itemBuilder: (context, index) {
-                              final entry = state.entries[index];
-                              return ListTile(
-                                leading: SizedBox(
-                                  width: 32,
-                                  child: Text(
-                                    '${entry.rank}',
-                                    textAlign: TextAlign.center,
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: entry.rank <= 3
-                                          ? theme.colorScheme.primary
-                                          : theme.textTertiary,
-                                    ),
-                                  ),
-                                ),
-                                title: Text(entry.label),
-                                subtitle: Text(
-                                  '${entry.playCount} ${t('leaderboard.plays')}',
-                                ),
-                                trailing: Text(
-                                  _formatDuration(entry.playedDurationMs),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.textTertiary,
-                                  ),
-                                ),
-                                onTap: () => context.push(
-                                  '/profile'
-                                  '?id=${Uri.encodeQueryComponent(entry.username ?? '')}',
-                                ),
-                              );
-                            },
+                ? ErrorState(message: state.error!, onRetry: _load)
+                : state.entries.isEmpty
+                ? EmptyState(
+                    icon: Icons.emoji_events_outlined,
+                    title: t('leaderboard.empty'),
+                  )
+                : ListView.builder(
+                    itemCount: state.entries.length,
+                    itemBuilder: (context, index) {
+                      final entry = state.entries[index];
+                      return ListTile(
+                        leading: SizedBox(
+                          width: 32,
+                          child: Text(
+                            '${entry.rank}',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: entry.rank <= 3
+                                  ? theme.colorScheme.primary
+                                  : theme.textTertiary,
+                            ),
                           ),
+                        ),
+                        title: Text(entry.label),
+                        subtitle: Text(
+                          '${entry.playCount} ${t('leaderboard.plays')}',
+                        ),
+                        trailing: Text(
+                          _formatDuration(entry.playedDurationMs),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.textTertiary,
+                          ),
+                        ),
+                        onTap: () => context.push(
+                          '/profile'
+                          '?id=${Uri.encodeQueryComponent(entry.username ?? '')}',
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

@@ -210,6 +210,24 @@ void main() {
         find.byType(ListeningRoomQueue),
         desktopRoom ? findsOneWidget : findsNothing,
       );
+      if (desktopRoom) {
+        final lyricsButton = find.descendant(
+          of: dock,
+          matching: find.byIcon(Icons.lyrics_outlined),
+        );
+        await tester.tap(lyricsButton);
+        await tester.pumpAndSettle();
+        expect(find.byType(PlayerLyrics), findsOneWidget);
+        expect(find.byType(ListeningRoomQueue), findsNothing);
+        await tester.tap(
+          find.descendant(
+            of: dock,
+            matching: find.byIcon(Icons.lyrics_rounded),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(PlayerLyrics), findsNothing);
+      }
       // Dock occupies layout space; content cannot extend behind it.
       final scroll = find.byType(CustomScrollView).first;
       expect(
@@ -271,10 +289,16 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(FullscreenPlayerPage), findsOneWidget);
+      expect(dock, findsOneWidget);
       expect(tester.takeException(), isNull);
       await capture(tester, 'player-${size.width.toInt()}');
       for (final icon in [Icons.lyrics_outlined, Icons.tune_rounded]) {
-        await tester.tap(find.byIcon(icon));
+        await tester.tap(
+          find.descendant(
+            of: find.byType(FullscreenPlayerPage),
+            matching: find.byIcon(icon),
+          ),
+        );
         await tester.pumpAndSettle();
         expect(find.byType(GlassSheet), findsOneWidget);
         expect(tester.takeException(), isNull);

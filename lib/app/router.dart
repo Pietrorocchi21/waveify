@@ -95,41 +95,41 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const _ImportRoute(),
           ),
           GoRoute(
+            path: AppRoutes.player,
+            builder: (context, state) => const _PlayerRoute(),
+          ),
+          GoRoute(
             path: AppRoutes.settings,
             builder: (context, state) => const _SettingsRoute(),
           ),
+          GoRoute(
+            path: AppRoutes.playlist,
+            builder: (context, state) =>
+                _PlaylistRoute(id: state.uri.queryParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: AppRoutes.artist,
+            builder: (context, state) =>
+                _ArtistRoute(id: state.uri.queryParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: AppRoutes.collection,
+            builder: (context, state) =>
+                _CollectionRoute(id: state.uri.queryParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: AppRoutes.profile,
+            builder: (context, state) =>
+                _ProfileRoute(userId: state.uri.queryParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: AppRoutes.leaderboard,
+            builder: (context, state) => _LeaderboardRoute(
+              artistId: state.uri.queryParameters['id'],
+              artistName: state.uri.queryParameters['name'],
+            ),
+          ),
         ],
-      ),
-      GoRoute(
-        path: AppRoutes.playlist,
-        builder: (context, state) =>
-            _PlaylistRoute(id: state.uri.queryParameters['id'] ?? ''),
-      ),
-      GoRoute(
-        path: AppRoutes.artist,
-        builder: (context, state) =>
-            _ArtistRoute(id: state.uri.queryParameters['id'] ?? ''),
-      ),
-      GoRoute(
-        path: AppRoutes.collection,
-        builder: (context, state) =>
-            _CollectionRoute(id: state.uri.queryParameters['id'] ?? ''),
-      ),
-      GoRoute(
-        path: AppRoutes.player,
-        builder: (context, state) => const _PlayerRoute(),
-      ),
-      GoRoute(
-        path: AppRoutes.profile,
-        builder: (context, state) =>
-            _ProfileRoute(userId: state.uri.queryParameters['id'] ?? ''),
-      ),
-      GoRoute(
-        path: AppRoutes.leaderboard,
-        builder: (context, state) => _LeaderboardRoute(
-          artistId: state.uri.queryParameters['id'],
-          artistName: state.uri.queryParameters['name'],
-        ),
       ),
     ],
   );
@@ -228,5 +228,6 @@ class _PlayerRoute extends StatelessWidget {
   const _PlayerRoute();
 
   @override
-  Widget build(BuildContext context) => const FullscreenPlayerPage();
+  Widget build(BuildContext context) =>
+      const FullscreenPlayerPage(embedded: true);
 }

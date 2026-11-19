@@ -30,7 +30,9 @@ class ArtistPage extends ConsumerWidget {
     final artist = ref.watch(artistProvider(artistId));
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         title: Text(artist.valueOrNull?.name ?? t('artist.tracks')),
       ),
       body: artist.when(
