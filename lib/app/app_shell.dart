@@ -1,3 +1,4 @@
+import '../shared/widgets/listening_backdrop.dart';
 import 'playback_video_backdrop.dart';
 import 'listening_room.dart';
 import '../features/library/library_controller.dart';
@@ -197,7 +198,7 @@ class AppShell extends ConsumerWidget {
       accentColor: accent,
       child: WallpaperBackground(
         fallback: Theme.of(context).brightness == Brightness.dark
-            ? const _ListeningBackdrop()
+            ? const ListeningBackdrop()
             : null,
         child: Stack(
           fit: StackFit.expand,
@@ -451,30 +452,4 @@ class _SideNavigation extends ConsumerWidget {
       ),
     );
   }
-}
-
-class _ListeningBackdrop extends StatelessWidget {
-  const _ListeningBackdrop();
-
-  @override
-  Widget build(BuildContext context) => Stack(
-    fit: StackFit.expand,
-    children: [
-      Image.asset(
-        'assets/images/listening-room.webp',
-        fit: BoxFit.cover,
-        excludeFromSemantics: true,
-        errorBuilder: (_, _, _) => const SizedBox.shrink(),
-      ),
-      const DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0x66101529), Color(0xA6192036), Color(0x73101A2E)],
-          ),
-        ),
-      ),
-    ],
-  );
 }

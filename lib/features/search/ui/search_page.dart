@@ -14,7 +14,9 @@ import '../../player/player_controller.dart';
 
 /// The global search screen.
 class SearchPage extends ConsumerStatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({super.key, this.initialQuery = ''});
+
+  final String initialQuery;
 
   @override
   ConsumerState<SearchPage> createState() => _SearchPageState();
@@ -31,6 +33,30 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   List<SearchItem> _results = const [];
   bool _loading = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _applyInitialQuery();
+  }
+
+  @override
+  void didUpdateWidget(SearchPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialQuery != oldWidget.initialQuery) _applyInitialQuery();
+  }
+
+  void _applyInitialQuery() {
+    final query = widget.initialQuery.trim();
+    if (query.isEmpty) return;
+    _debounce?.cancel();
+    _controller.text = query;
+    _source = CatalogSearchSource.online;
+    _type = 'track';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _controller.text == query) _search(query);
+    });
+  }
 
   @override
   void dispose() {
@@ -91,7 +117,17 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 2),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              t('common.sidebar.search'),
+              style: theme.textTheme.headlineMedium,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
           child: TextField(
             controller: _controller,
             focusNode: _focusNode,
@@ -125,7 +161,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               child: Row(
                 children: [
                   for (final source in const [
-                    (CatalogSearchSource.online, 'search.online'),
+                    (CatalogSearchSource.online, 'Audius'),
                     (CatalogSearchSource.youtube, 'YouTube'),
                     (CatalogSearchSource.library, 'search.library'),
                   ])
@@ -140,7 +176,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                               : theme.colorScheme.onSurface,
                         ),
                         label: Text(
-                          source.$2 == 'YouTube' ? source.$2 : t(source.$2),
+                          source.$1 == CatalogSearchSource.library
+                              ? t(source.$2)
+                              : source.$2,
                         ),
                         selected: _source == source.$1,
                         onSelected: (_) {

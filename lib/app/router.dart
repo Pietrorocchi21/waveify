@@ -75,7 +75,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: AppRoutes.search,
-            builder: (context, state) => const _SearchRoute(),
+            builder: (context, state) =>
+                SearchPage(initialQuery: state.uri.queryParameters['q'] ?? ''),
           ),
           GoRoute(
             path: AppRoutes.library,
@@ -139,13 +140,6 @@ class _HomeRoute extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const HomePage();
-}
-
-class _SearchRoute extends StatelessWidget {
-  const _SearchRoute();
-
-  @override
-  Widget build(BuildContext context) => const SearchPage();
 }
 
 class _LibraryRoute extends StatelessWidget {

@@ -52,111 +52,109 @@ class _LibraryPageState extends ConsumerState<LibraryPage>
     final t = ref.watch(translatorProvider);
     final library = ref.watch(libraryControllerProvider);
 
-    return AmbientBackground(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              DesignTokens.spaceXxl,
-              DesignTokens.spaceXxxl,
-              DesignTokens.spaceXxl,
-              DesignTokens.spaceMd,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        t('library.title'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: DesignTokens.textDisplaySmall.copyWith(
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                    const ImportAudioButton(),
-                  ],
-                ),
-                const SizedBox(height: DesignTokens.spaceLg),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    GlassButton(
-                      onPressed: () => _createPlaylist(context, t),
-                      variant: GlassButtonVariant.primary,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.add_rounded, size: 18),
-                          const SizedBox(width: DesignTokens.spaceXs),
-                          Flexible(child: Text(t('library.create_playlist'))),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: DesignTokens.spaceSm),
-                    GlassButton(
-                      onPressed: () => context.push('/import'),
-                      variant: GlassButtonVariant.secondary,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.download_rounded, size: 16),
-                          const SizedBox(width: DesignTokens.spaceXs),
-                          Flexible(child: Text(t('import.title'))),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            DesignTokens.spaceXxl,
+            DesignTokens.spaceXxxl,
+            DesignTokens.spaceXxl,
+            DesignTokens.spaceMd,
           ),
-          const SizedBox(height: DesignTokens.spaceMd),
-          _GlassTabBar(
-            controller: _tabs,
-            tabs: [
-              _GlassTab(text: t('library.on_device')),
-              if (CloudConfig.isConfigured) _GlassTab(text: t('library.cloud')),
-              _GlassTab(text: t('library.liked_songs')),
-              _GlassTab(text: t('library.tab_playlists')),
-              _GlassTab(text: t('library.tab_albums')),
-              _GlassTab(text: t('library.tab_artists')),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      t('library.title'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: DesignTokens.textDisplaySmall.copyWith(
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  const ImportAudioButton(),
+                ],
+              ),
+              const SizedBox(height: DesignTokens.spaceLg),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  GlassButton(
+                    onPressed: () => _createPlaylist(context, t),
+                    variant: GlassButtonVariant.primary,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.add_rounded, size: 18),
+                        const SizedBox(width: DesignTokens.spaceXs),
+                        Flexible(child: Text(t('library.create_playlist'))),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: DesignTokens.spaceSm),
+                  GlassButton(
+                    onPressed: () => context.push('/import'),
+                    variant: GlassButtonVariant.secondary,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.download_rounded, size: 16),
+                        const SizedBox(width: DesignTokens.spaceXs),
+                        Flexible(child: Text(t('import.title'))),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabs,
-              children: [
-                const DeviceTracksTab(),
-                if (CloudConfig.isConfigured) const CloudTracksTab(),
-                _LikedSongsTab(library: library, ref: ref),
-                _PlaylistsTab(library: library),
-                _SavedTab(
-                  collections: library.savedAlbums,
-                  emptyIcon: Icons.album_outlined,
-                  emptyTitle: t('library.no_albums_title'),
-                  emptyDescription: t('library.no_albums_desc'),
-                  onOpen: (id) => context.push(
-                    '/collection?type=album&id=${Uri.encodeComponent(id)}',
-                  ),
+        ),
+        const SizedBox(height: DesignTokens.spaceMd),
+        _GlassTabBar(
+          controller: _tabs,
+          tabs: [
+            _GlassTab(text: t('library.on_device')),
+            if (CloudConfig.isConfigured) _GlassTab(text: t('library.cloud')),
+            _GlassTab(text: t('library.liked_songs')),
+            _GlassTab(text: t('library.tab_playlists')),
+            _GlassTab(text: t('library.tab_albums')),
+            _GlassTab(text: t('library.tab_artists')),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabs,
+            children: [
+              const DeviceTracksTab(),
+              if (CloudConfig.isConfigured) const CloudTracksTab(),
+              _LikedSongsTab(library: library, ref: ref),
+              _PlaylistsTab(library: library),
+              _SavedTab(
+                collections: library.savedAlbums,
+                emptyIcon: Icons.album_outlined,
+                emptyTitle: t('library.no_albums_title'),
+                emptyDescription: t('library.no_albums_desc'),
+                onOpen: (id) => context.push(
+                  '/collection?type=album&id=${Uri.encodeComponent(id)}',
                 ),
-                _SavedTab(
-                  collections: library.savedArtists,
-                  emptyIcon: Icons.person_outline_rounded,
-                  emptyTitle: t('library.no_artists_title'),
-                  emptyDescription: t('library.no_artists_desc'),
-                  onOpen: (id) =>
-                      context.push('/artist?id=${Uri.encodeComponent(id)}'),
-                ),
-              ],
-            ),
+              ),
+              _SavedTab(
+                collections: library.savedArtists,
+                emptyIcon: Icons.person_outline_rounded,
+                emptyTitle: t('library.no_artists_title'),
+                emptyDescription: t('library.no_artists_desc'),
+                onOpen: (id) =>
+                    context.push('/artist?id=${Uri.encodeComponent(id)}'),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

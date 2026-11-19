@@ -369,6 +369,7 @@
     "confirm_email_pending": "Check your email to confirm your registration, then sign in."
   },
   "player": {
+    "find_on_audius": "Look for this track on Audius",
     "repeat_off": "Repeat: off",
     "repeat_all": "Repeat: all",
     "repeat_one": "Repeat: track",

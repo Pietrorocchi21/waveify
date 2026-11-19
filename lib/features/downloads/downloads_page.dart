@@ -5,6 +5,7 @@ import 'package:waveify/core/providers/app_providers.dart';
 import 'package:waveify/shared/widgets/common.dart';
 import 'package:waveify/models/track.dart';
 import 'package:waveify/shared/widgets/track_widgets.dart';
+
 import 'downloads_store.dart';
 import 'downloads_controller.dart';
 
@@ -31,7 +32,7 @@ class DownloadsPage extends ConsumerWidget {
                   children: [
                     Text(
                       t('downloads.title'),
-                      style: theme.textTheme.headlineSmall?.copyWith(
+                      style: theme.textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -68,35 +69,33 @@ class DownloadsPage extends ConsumerWidget {
           child: downloads.isLoading && downloads.tracks.isEmpty
               ? const LoadingState()
               : downloads.tracks.isEmpty
-                  ? EmptyState(
-                      icon: Icons.download_for_offline_outlined,
-                      title: t('downloads.empty_title'),
-                      description: t('downloads.empty_desc'),
-                    )
-                  : ListView.builder(
-                      itemCount: downloads.tracks.length,
-                      itemBuilder: (context, index) {
-                        final item = downloads.tracks[index];
-                        final track = TrackRow(
-                          track: _toTrack(item),
-                          queue: [
-                            for (final d in downloads.tracks) _toTrack(d),
-                          ],
-                          context_: 'downloads',
-                          index: index,
-                          trailing: IconButton(
-                            tooltip: t('common.remove'),
-                            icon: Icon(
-                              Icons.delete_outline_rounded,
-                              size: 18,
-                              color: theme.textTertiary,
-                            ),
-                            onPressed: () => controller.remove(item.trackId),
-                          ),
-                        );
-                        return track;
-                      },
-                    ),
+              ? EmptyState(
+                  icon: Icons.download_for_offline_outlined,
+                  title: t('downloads.empty_title'),
+                  description: t('downloads.empty_desc'),
+                )
+              : ListView.builder(
+                  itemCount: downloads.tracks.length,
+                  itemBuilder: (context, index) {
+                    final item = downloads.tracks[index];
+                    final track = TrackRow(
+                      track: _toTrack(item),
+                      queue: [for (final d in downloads.tracks) _toTrack(d)],
+                      context_: 'downloads',
+                      index: index,
+                      trailing: IconButton(
+                        tooltip: t('common.remove'),
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                          color: theme.textTertiary,
+                        ),
+                        onPressed: () => controller.remove(item.trackId),
+                      ),
+                    );
+                    return track;
+                  },
+                ),
         ),
       ],
     );

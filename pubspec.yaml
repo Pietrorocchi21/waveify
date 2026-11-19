@@ -2,7 +2,7 @@ name: waveify
 description: "Waveify — music player multipiattaforma con account sincronizzato."
 publish_to: 'none'
 
-version: 1.2.0+7
+version: 1.2.1+8
 
 environment:
   sdk: ^3.13.7

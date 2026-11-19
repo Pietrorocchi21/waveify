@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'update_panel.dart';
 import '../../../core/providers/app_providers.dart';
-import '../../../shared/widgets/common.dart';
+import '../../../shared/widgets/glass.dart';
 import '../../auth/auth_controller.dart';
 import '../../customization/customization_settings.dart';
 import '../../overlay/overlay_service.dart';
@@ -37,7 +37,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       children: [
         Text(
           t('settings.title'),
-          style: theme.textTheme.headlineSmall?.copyWith(
+          style: theme.textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -51,7 +51,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         const SizedBox(height: 24),
 
         _GroupTitle(t('settings.tabs.appearance')),
-        AppPanel(
+        GlassPanel(
+          blur: 0,
           padding: EdgeInsets.zero,
           child: Column(
             children: [
@@ -124,7 +125,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
         const SizedBox(height: 20),
         _GroupTitle(t('settings.tabs.playback')),
-        AppPanel(
+        GlassPanel(
+          blur: 0,
           padding: EdgeInsets.zero,
           child: Column(
             children: [
@@ -152,7 +154,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
         const SizedBox(height: 20),
         _GroupTitle(t('settings.tabs.discord')),
-        AppPanel(
+        GlassPanel(
+          blur: 0,
           padding: EdgeInsets.zero,
           child: Column(
             children: [
@@ -208,7 +211,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
         const SizedBox(height: 20),
         _GroupTitle(t('settings.tabs.shortcuts')),
-        AppPanel(
+        GlassPanel(
+          blur: 0,
           padding: EdgeInsets.zero,
           child: Column(
             children: [
@@ -233,7 +237,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
         const SizedBox(height: 20),
         _GroupTitle(t('settings.tabs.account')),
-        AppPanel(
+        GlassPanel(
+          blur: 0,
           padding: EdgeInsets.zero,
           child: Column(
             children: [
@@ -267,7 +272,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
         const SizedBox(height: 20),
         _GroupTitle(t('settings.tabs.about')),
-        AppPanel(
+        GlassPanel(
+          blur: 0,
           padding: EdgeInsets.zero,
           child: Column(
             children: [
@@ -321,7 +327,8 @@ class _OverlaySettings extends ConsumerWidget {
     final controller = ref.read(settingsProvider.notifier);
     final overlay = ref.watch(overlayServiceProvider);
 
-    return AppPanel(
+    return GlassPanel(
+      blur: 0,
       padding: EdgeInsets.zero,
       child: Column(
         children: [

@@ -1,3 +1,8 @@
+import 'package:go_router/go_router.dart';
+
+import '../../../core/media/innertube/stream_resolver.dart';
+import '../../../shared/widgets/waveify_brand.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,7 +47,6 @@ class FullscreenPlayerPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final t = ref.watch(translatorProvider);
     final playback = ref.watch(
       playerControllerProvider.select(
@@ -75,10 +79,7 @@ class FullscreenPlayerPage extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text(
-            'waveify',
-            style: theme.textTheme.titleMedium?.copyWith(letterSpacing: -0.5),
-          ),
+          title: const WaveifyWordmark(),
           actions: [
             IconButton(
               tooltip: t('player.lyrics'),
@@ -147,6 +148,22 @@ class FullscreenPlayerPage extends ConsumerWidget {
                   ),
                 ),
               ),
+              if (StreamResolver.toVideoId(track.id) != null &&
+                  ref.watch(
+                    playerControllerProvider.select((s) => s.error != null),
+                  ))
+                TextButton.icon(
+                  onPressed: () => context.go(
+                    Uri(
+                      path: '/search',
+                      queryParameters: {
+                        'q': '${track.title} ${track.artists}'.trim(),
+                      },
+                    ).toString(),
+                  ),
+                  icon: const Icon(Icons.search_rounded, size: 18),
+                  label: Text(t('player.find_on_audius')),
+                ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
