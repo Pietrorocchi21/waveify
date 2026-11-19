@@ -322,7 +322,9 @@ class PlayerController extends Notifier<PlayerState> {
     } catch (err) {
       if (!isCurrent()) return;
       final stage = openingAudio ? 'Audio player' : 'Stream resolver';
-      final message = '$stage: ${err.runtimeType}';
+      final message = err is InnertubeException
+          ? err.toString()
+          : '$stage: ${err.runtimeType}';
       if (skipOnError) {
         await _handlePlaybackError(track.id, message);
       } else if (state.currentTrack?.id == track.id) {

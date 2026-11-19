@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
 import 'dart:io';
@@ -77,26 +79,14 @@ class StreamResolver {
     if (videoId != null) {
       final client = youtube ?? yt.YoutubeExplode();
       try {
-        final manifest = await _youtubeManifest(client, videoId);
-        final audio = _rankAudio(manifest.audioOnly);
+        final (manifest, playable) = await _youtubeManifest(client, videoId);
+        final stream = playable.first;
         final muxed = manifest.muxed.toList()
           ..sort(
             (left, right) => left.bitrate.bitsPerSecond.compareTo(
               right.bitrate.bitsPerSecond,
             ),
           );
-        if (audio.isEmpty && muxed.isEmpty) {
-          throw const InnertubeException(
-            'This video has no accessible audio stream.',
-            404,
-          );
-        }
-        final yt.StreamInfo stream = audio.firstOrNull ?? muxed.first;
-        final alternate =
-            audio
-                .where((candidate) => candidate.container != stream.container)
-                .firstOrNull ??
-            muxed.where((candidate) => candidate.url != stream.url).firstOrNull;
         final video = manifest.videoOnly.toList()
           ..sort((left, right) {
             final leftHeight = left.videoResolution.height;
@@ -110,7 +100,9 @@ class StreamResolver {
           url: stream.url.toString(),
           mimeType: stream.container.name == 'mp4' ? 'audio/mp4' : 'audio/webm',
           videoUrl: (video.firstOrNull ?? muxed.firstOrNull)?.url.toString(),
-          alternateUrls: [if (alternate != null) alternate.url.toString()],
+          alternateUrls: [
+            for (final alternate in playable.skip(1)) alternate.url.toString(),
+          ],
         );
       } finally {
         if (youtube == null) client.close();
@@ -141,25 +133,89 @@ class StreamResolver {
     );
   }
 
-  Future<yt.StreamManifest> _youtubeManifest(
+  Future<(yt.StreamManifest, List<yt.StreamInfo>)> _youtubeManifest(
     yt.YoutubeExplode client,
     String videoId,
   ) async {
+    final http = HttpClient()..connectionTimeout = const Duration(seconds: 2);
+    Object? lastError;
     try {
-      final direct = await client.videos.streamsClient
-          .getManifest(
-            videoId,
-            ytClients: [yt.YoutubeApiClient.androidSdkless],
-            requireWatchPage: false,
-          )
-          .timeout(const Duration(seconds: 8));
-      if (direct.audioOnly.isNotEmpty || direct.muxed.isNotEmpty) return direct;
-    } catch (_) {
-      // Some public videos require the library's standard watch-page flow.
+      for (final profile in [
+        yt.YoutubeApiClient.androidSdkless,
+        yt.YoutubeApiClient.tv,
+      ]) {
+        try {
+          final manifest = await client.videos.streamsClient
+              .getManifest(
+                videoId,
+                ytClients: [profile],
+                requireWatchPage: false,
+              )
+              .timeout(const Duration(seconds: 7));
+          final audio = _rankAudio(manifest.audioOnly);
+          final muxed = manifest.muxed.toList()
+            ..sort(
+              (left, right) => left.bitrate.bitsPerSecond.compareTo(
+                right.bitrate.bitsPerSecond,
+              ),
+            );
+          final candidates = <yt.StreamInfo>[
+            if (audio.isNotEmpty) audio.first,
+            if (audio.isNotEmpty)
+              ...audio
+                  .where((item) => item.container != audio.first.container)
+                  .take(1),
+            ...muxed.take(1),
+          ];
+          final checks = await Future.wait([
+            for (final candidate in candidates)
+              _probeAudio(http, candidate.url),
+          ]);
+          final available = [
+            for (var i = 0; i < candidates.length; i++)
+              if (checks[i] == 200 || checks[i] == 206) candidates[i],
+          ];
+          if (available.isNotEmpty) return (manifest, available);
+          final status = checks.where((code) => code != 0).firstOrNull ?? 0;
+          lastError = InnertubeException(
+            'YouTube did not return a readable audio stream.',
+            status,
+          );
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      if (lastError is InnertubeException) throw lastError;
+      throw const InnertubeException('YouTube audio did not become available.');
+    } finally {
+      http.close(force: true);
     }
-    return client.videos.streamsClient
-        .getManifest(videoId)
-        .timeout(const Duration(seconds: 12));
+  }
+
+  // Check the actual media CDN before opening it in the native decoder.
+  // A HEAD success alone does not guarantee that a subsequent GET works.
+  Future<int> _probeAudio(HttpClient client, Uri url) async {
+    if (url.scheme != 'https') return 0;
+    try {
+      final request = await client
+          .getUrl(url)
+          .timeout(const Duration(seconds: 2));
+      request.headers.set(HttpHeaders.rangeHeader, 'bytes=0-0');
+      final response = await request.close().timeout(
+        const Duration(seconds: 2),
+      );
+      unawaited(response.listen((_) {}).cancel());
+      final code = response.statusCode;
+      final type = response.headers.contentType;
+      if ((code == 200 || code == 206) &&
+          (type?.primaryType == 'text' ||
+              type?.mimeType == 'application/json')) {
+        return 0;
+      }
+      return code;
+    } catch (_) {
+      return 0;
+    }
   }
 
   List<yt.AudioOnlyStreamInfo> _rankAudio(
