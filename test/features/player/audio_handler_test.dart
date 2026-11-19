@@ -81,6 +81,17 @@ void main() {
     expect(player.playCalls, 1);
   });
 
+  test('starting playback clears an earlier stream error', () async {
+    final failed = handler.playbackState.firstWhere(
+      (state) => state.processingState == AudioProcessingState.error,
+    );
+    player.events.addError(StateError('expired stream'));
+    await failed;
+    await handler.play();
+    expect(handler.playbackState.value.playing, isTrue);
+    expect(handler.playbackState.value.errorMessage, isNull);
+  });
+
   test('asynchronous playback failure reaches the media state', () async {
     await handler.play();
     final failedState = handler.playbackState.firstWhere(

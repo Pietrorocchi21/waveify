@@ -674,11 +674,14 @@ class PlayerController extends Notifier<PlayerState> {
       unawaited(WindowService.instance.setKeepAwake(keepAwake));
     }
 
-    if (playbackState.processingState == AudioProcessingState.ready ||
-        playbackState.processingState == AudioProcessingState.buffering) {
-      if (state.status == PlayerStatus.loading) {
-        state = state.copyWith(status: PlayerStatus.playing);
-      }
+    final track = state.currentTrack;
+    if (track != null &&
+        _handler.mediaItem.value?.id == track.id &&
+        playbackState.playing &&
+        playbackState.processingState == AudioProcessingState.ready &&
+        (state.status == PlayerStatus.loading ||
+            state.status == PlayerStatus.error)) {
+      state = state.copyWith(status: PlayerStatus.playing, clearError: true);
     }
     if (playbackState.processingState == AudioProcessingState.error) {
       state = state.copyWith(

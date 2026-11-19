@@ -74,6 +74,8 @@ class WaveifyAudioHandler extends BaseAudioHandler {
     playbackState.add(
       playbackState.value.copyWith(
         processingState: AudioProcessingState.loading,
+        errorCode: null,
+        errorMessage: null,
       ),
     );
 
@@ -113,6 +115,8 @@ class WaveifyAudioHandler extends BaseAudioHandler {
       playbackState.value.copyWith(
         playing: true,
         processingState: AudioProcessingState.ready,
+        errorCode: null,
+        errorMessage: null,
       ),
     );
     unawaited(
@@ -232,6 +236,8 @@ class WaveifyAudioHandler extends BaseAudioHandler {
         },
         androidCompactActionIndices: const [0, 1, 3],
         processingState: processingState,
+        errorCode: null,
+        errorMessage: null,
         playing: playing,
         updatePosition: _player.position,
       ),
