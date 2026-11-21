@@ -1,3 +1,14 @@
+import 'package:waveify/features/player/ui/fullscreen_player_page.dart';
+
+import '../shared/widgets/listening_backdrop.dart';
+import 'playback_video_backdrop.dart';
+import 'listening_room.dart';
+import '../features/library/library_controller.dart';
+import '../shared/widgets/waveify_brand.dart';
+
+import 'package:flutter/services.dart';
+import 'package:waveify/core/theme/artwork_palette.dart';
+import 'package:waveify/features/player/player_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,16 +21,12 @@ import 'package:waveify/features/overlay/overlay_service.dart';
 import 'package:waveify/features/customization/customization_controller.dart';
 import 'package:waveify/features/player/ui/mini_player.dart';
 import 'package:waveify/features/shortcuts/shortcut_scope.dart';
+import 'package:waveify/features/settings/ui/update_notice.dart';
 import 'package:waveify/shared/widgets/glass.dart';
 
 /// The destinations of the main navigation.
 class AppDestination {
-  const AppDestination(
-    this.route,
-    this.icon,
-    this.activeIcon,
-    this.labelKey,
-  );
+  const AppDestination(this.route, this.icon, this.activeIcon, this.labelKey);
 
   final String route;
   final IconData icon;
@@ -47,6 +54,12 @@ const List<AppDestination> appDestinations = [
     'common.sidebar.library',
   ),
   AppDestination(
+    '/gallery',
+    Icons.view_in_ar_outlined,
+    Icons.view_in_ar_rounded,
+    'gallery.title',
+  ),
+  AppDestination(
     '/downloads',
     Icons.download_for_offline_outlined,
     Icons.download_for_offline_rounded,
@@ -66,196 +79,243 @@ const List<AppDestination> appDestinations = [
   ),
 ];
 
-/// The application frame: navigation, content and the docked mini player.
+final _roomLyricsProvider = StateProvider<bool>((ref) => false);
+
+/// Shared frame reserves real layout space for the dock and safe areas.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
-
   final Widget child;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final accent = ref.watch(ambientAccentProvider);
     final t = ref.watch(translatorProvider);
-    final isWide = MediaQuery.sizeOf(context).width >= 900;
-
-    // The diagnostics wall replaces the app when the connection breaks.
-    final connectivity = ref.watch(connectivityControllerProvider);
-    if (connectivity.visible) {
-      return const Scaffold(body: ConnectivityWall());
+    final path = GoRouterState.of(context).uri.path;
+    final width = MediaQuery.sizeOf(context).width;
+    final wide = width >= 900;
+    final room = width >= 1120;
+    final hasTrack = ref.watch(
+      playerControllerProvider.select((s) => s.currentTrack != null),
+    );
+    final showLyrics = room && hasTrack && ref.watch(_roomLyricsProvider);
+    final showQueue =
+        room &&
+        (path == '/' || path == '/player') &&
+        ref.watch(playerControllerProvider.select((s) => s.queue.isNotEmpty));
+    void toggleLyrics() {
+      if (!room) {
+        showLyricsSheet(context);
+        return;
+      }
+      final side = ref.read(_roomLyricsProvider.notifier);
+      side.state = !side.state;
     }
 
-    // In the overlay mode the window is the mini player: it floats above the
-    // other applications.
-    final overlay = ref.watch(overlayServiceProvider);
-    if (overlay.isOpen) {
+    void togglePlayer() {
+      if (path != '/player') {
+        context.push('/player');
+      } else if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/');
+      }
+    }
+
+    if (ref.watch(overlayServiceProvider).isOpen) {
       return AmbientBackground(
-        child: ShortcutScope(
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: WindowDragArea(
-              child: MiniPlayer(
-                onOpen: () =>
-                    ref.read(overlayServiceProvider.notifier).close(),
+        accentColor: accent,
+        child: CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.escape): () =>
+                ref.read(overlayServiceProvider.notifier).close(),
+          },
+          child: Focus(
+            autofocus: true,
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              body: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    const WindowDragArea(
+                      child: SizedBox(
+                        width: 25,
+                        height: 72,
+                        child: Icon(Icons.drag_indicator_rounded, size: 19),
+                      ),
+                    ),
+                    const Expanded(
+                      child: Center(child: MiniPlayer(fullControls: true)),
+                    ),
+                    IconButton(
+                      tooltip: t('player.open_player'),
+                      icon: const Icon(Icons.open_in_full_rounded, size: 19),
+                      onPressed: () =>
+                          ref.read(overlayServiceProvider.notifier).close(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       );
     }
-
-    final content = Column(
+    if (ref.watch(connectivityControllerProvider).visible) {
+      return const Scaffold(body: ConnectivityWall());
+    }
+    final main = Column(
       children: [
-        Expanded(child: child),
-        const _MiniPlayerWrapper(),
-      ],
-    );
-
-    final body = isWide
-        ? Scaffold(
-            backgroundColor: Colors.transparent,
-            body: Row(
-              children: [
-                _GlassSidebarWrapper(child: const _SideNavigation()),
-                const _GlassDivider(),
-                Expanded(
-                  child: GlassPanel(
-                    borderRadius: 0,
-                    borderOpacity: 0,
-                    padding: EdgeInsets.zero,
-                    opacity: 0,
-                    blur: 0,
-                    dim: 0,
-                    shadows: [],
-                    child: Column(
-                      children: [
-                        // The draggable bar of the frameless window.
-                        WindowDragArea(
-                          child: SizedBox(
-                            height: 32,
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: const WindowControls(),
-                            ),
-                          ),
-                        ),
-                        Expanded(child: content),
-                      ],
+        if (wide || WindowService.instance.isDesktop)
+          const SizedBox(
+            height: 32,
+            child: WindowDragArea(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: WindowControls(),
+              ),
+            ),
+          ),
+        const UpdateNotice(),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (wide)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 8, 0, 12),
+                  child: SizedBox(
+                    width: room ? (width * .155).clamp(180.0, 230.0) : 64,
+                    child: GlassPanel(
+                      borderRadius: 24,
+                      borderOpacity: .18,
+                      padding: room
+                          ? const EdgeInsets.symmetric(horizontal: 10)
+                          : null,
+                      child: _SideNavigation(path: path, expanded: room),
                     ),
                   ),
                 ),
-              ],
+              Expanded(
+                child: DecoratedBlock(
+                  block: CustomizationBlock.contentView,
+                  child: child,
+                ),
+              ),
+              if (showQueue || showLyrics)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 12, 18, 12),
+                  child: SizedBox(
+                    width: (width * .212).clamp(235.0, 330.0),
+                    child: showLyrics
+                        ? const GlassPanel(
+                            borderRadius: 24,
+                            borderOpacity: .18,
+                            child: PlayerLyrics(),
+                          )
+                        : const ListeningRoomQueue(),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (room)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(34, 2, 34, 18),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1500),
+                child: ListeningRoomDock(
+                  onOpen: togglePlayer,
+                  onLyrics: toggleLyrics,
+                  showingLyrics: showLyrics,
+                ),
+              ),
             ),
           )
-        : Scaffold(
-            backgroundColor: Colors.transparent,
-            body: GlassPanel(
-              borderRadius: 0,
-              borderOpacity: 0,
-              padding: EdgeInsets.zero,
-              opacity: 0,
-              blur: 0,
-              dim: 0,
-              shadows: [],
-              child: content,
-            ),
-            bottomNavigationBar: _GlassBottomNav(
-              selectedIndex: _selectedIndex(context),
-              onDestinationSelected: (index) => _go(context, index),
-              destinations: [
-                for (final destination in appDestinations)
-                  NavigationDestination(
-                    icon: Icon(destination.icon),
-                    selectedIcon: Icon(destination.activeIcon),
-                    label: t(destination.labelKey),
-                  ),
-              ],
-            ),
-          );
-
-    return AmbientBackground(child: ShortcutScope(child: body));
-  }
-
-  static int _selectedIndex(BuildContext context) {
-    final path = GoRouterState.of(context).uri.path;
-    final index = appDestinations.indexWhere((d) => d.route == path);
-    return index < 0 ? 0 : index;
-  }
-
-  static void _go(BuildContext context, int index) {
-    final destination = appDestinations[index];
-    if (destination.route == '/') {
-      context.go('/');
-    } else {
-      context.go(destination.route);
-    }
-  }
-}
-
-class _GlassSidebarWrapper extends StatelessWidget {
-  const _GlassSidebarWrapper({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return GlassSidebar(
-      width: 220,
-      child: Container(
-        color: Colors.transparent,
-        child: child,
-      ),
+        else
+          _MiniPlayerWrapper(onOpen: togglePlayer),
+      ],
     );
-  }
-}
-
-class _GlassDivider extends StatelessWidget {
-  const _GlassDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      width: 1,
-      color: Colors.white.withValues(alpha: 0.06),
-    );
-  }
-}
-
-class _GlassBottomNav extends ConsumerWidget {
-  const _GlassBottomNav({
-    required this.selectedIndex,
-    required this.onDestinationSelected,
-    required this.destinations,
-  });
-
-  final int selectedIndex;
-  final ValueChanged<int> onDestinationSelected;
-  final List<NavigationDestination> destinations;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-
-    return GlassPanel(
-      borderRadius: 0,
-      borderOpacity: 0,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      opacity: DesignTokens.glassOpacityStrong,
-      blur: DesignTokens.glassBlurStrong,
-      dim: DesignTokens.glassDimStrong,
-      shadows: DesignTokens.shadowPlayer,
-      child: SafeArea(
-        top: false,
-        child: NavigationBar(
-          selectedIndex: selectedIndex,
-          onDestinationSelected: onDestinationSelected,
-          destinations: destinations,
-          backgroundColor: Colors.transparent,
-          indicatorColor: Colors.transparent,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          height: 64,
-          elevation: 0,
+    return AmbientBackground(
+      accentColor: accent,
+      child: WallpaperBackground(
+        fallback: Theme.of(context).brightness == Brightness.dark
+            ? const ListeningBackdrop()
+            : null,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const PlaybackVideoBackdrop(),
+            ShortcutScope(
+              onToggleFullscreen: togglePlayer,
+              onToggleLyrics: toggleLyrics,
+              child: Scaffold(
+                backgroundColor: Colors.transparent,
+                body: SafeArea(bottom: false, child: main),
+                bottomNavigationBar: wide
+                    ? null
+                    : GlassPanel(
+                        borderRadius: 0,
+                        blur: 16,
+                        padding: EdgeInsets.zero,
+                        child: SafeArea(
+                          top: false,
+                          child: NavigationBar(
+                            height: 68,
+                            selectedIndex: path == '/'
+                                ? 0
+                                : path.startsWith('/search')
+                                ? 1
+                                : path.startsWith('/library')
+                                ? 2
+                                : 3,
+                            onDestinationSelected: (index) {
+                              if (index < 3) {
+                                context.go(appDestinations[index].route);
+                                return;
+                              }
+                              showModalBottomSheet<void>(
+                                context: context,
+                                builder: (sheetContext) => GlassSheet(
+                                  maxHeight: 280,
+                                  padding: const EdgeInsets.all(16),
+                                  child: ListView(
+                                    children: [
+                                      for (final destination
+                                          in appDestinations.skip(3))
+                                        ListTile(
+                                          leading: Icon(destination.icon),
+                                          title: Text(t(destination.labelKey)),
+                                          onTap: () {
+                                            Navigator.pop(sheetContext);
+                                            context.go(destination.route);
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                            destinations: [
+                              for (final destination in appDestinations.take(3))
+                                NavigationDestination(
+                                  icon: Icon(destination.icon),
+                                  selectedIcon: Icon(destination.activeIcon),
+                                  label: t(destination.labelKey),
+                                ),
+                              NavigationDestination(
+                                icon: const Icon(Icons.more_horiz_rounded),
+                                label: MaterialLocalizations.of(context)
+                                    .moreButtonTooltip,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -263,84 +323,179 @@ class _GlassBottomNav extends ConsumerWidget {
 }
 
 class _MiniPlayerWrapper extends ConsumerWidget {
-  const _MiniPlayerWrapper();
+  const _MiniPlayerWrapper({required this.onOpen});
 
+  final VoidCallback onOpen;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final (currentTrack, status) = ref.watch(
-      playerControllerProvider.select((s) => (s.currentTrack, s.status)),
+    final track = ref.watch(
+      playerControllerProvider.select((s) => s.currentTrack),
     );
-
-    if (currentTrack == null) {
-      return const SizedBox.shrink();
-    }
-
-    return GlassPlayerBar(
-      accentColor: theme.colorScheme.primary,
-      padding: const EdgeInsets.symmetric(
-        horizontal: DesignTokens.spaceXl,
-        vertical: DesignTokens.spaceMd,
+    if (track == null) return const SizedBox.shrink();
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        wide ? 24 : 10,
+        8,
+        wide ? 24 : 10,
+        wide ? 20 : 8,
       ),
-      child: MiniPlayer(onOpen: null),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 940),
+          child: DecoratedBlock(
+            block: CustomizationBlock.miniplayer,
+            child: GlassPlayerBar(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              child: MiniPlayer(onOpen: onOpen),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
 class _SideNavigation extends ConsumerWidget {
-  const _SideNavigation();
-
+  const _SideNavigation({required this.path, required this.expanded});
+  final String path;
+  final bool expanded;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final t = ref.watch(translatorProvider);
-    final path = GoRouterState.of(context).uri.path;
-    final selected = appDestinations.indexWhere((d) => d.route == path);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: NavigationRail(
-        extended: true,
-        minExtendedWidth: 190,
-        selectedIndex: selected < 0 ? 0 : selected,
-        onDestinationSelected: (index) {
-          final destination = appDestinations[index];
-          context.go(destination.route);
-        },
-        leading: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          child: Icon(
-            Icons.graphic_eq_rounded,
-            color: theme.colorScheme.primary,
-            size: 26,
+    if (expanded) {
+      final playlists = ref.watch(
+        libraryControllerProvider.select((s) => s.playlists),
+      );
+      return ListView(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        children: [
+          Center(
+            child: TextButton(
+              onPressed: () => context.go('/'),
+              child: const WaveifyWordmark(stacked: true),
+            ),
+          ),
+          const SizedBox(height: 24),
+          for (final destination in appDestinations.take(3))
+            _navigationTile(context, destination, t(destination.labelKey)),
+          if (playlists.isNotEmpty) ...[
+            const Divider(height: 28),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Text(
+                t('home.your_playlists'),
+                style: theme.textTheme.labelLarge,
+              ),
+            ),
+            for (final playlist in playlists)
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.queue_music_rounded, size: 20),
+                title: Text(
+                  playlist.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () => context.push(
+                  Uri(
+                    path: '/library/playlist',
+                    queryParameters: {'id': playlist.id},
+                  ).toString(),
+                ),
+              ),
+          ],
+          const Divider(height: 28),
+          for (final destination in appDestinations.skip(3))
+            _navigationTile(context, destination, t(destination.labelKey)),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.person_outline_rounded, size: 22),
+            title: Text(t('profile.title')),
+            onTap: () => context.push('/profile'),
+          ),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 20, bottom: 32),
+          child: IconButton(
+            tooltip: 'Waveify',
+            onPressed: () => context.go('/'),
+            icon: const WaveifyMark(width: 34),
           ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        indicatorColor: theme.colorScheme.primary.withValues(alpha: 0.12),
-        selectedIconTheme: IconThemeData(
-          color: theme.colorScheme.primary,
-          size: 24,
-        ),
-        unselectedIconTheme: IconThemeData(
-          color: theme.colorScheme.onSurfaceVariant,
-          size: 24,
-        ),
-        selectedLabelTextStyle: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelTextStyle: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        destinations: [
-          for (final destination in appDestinations)
-            NavigationRailDestination(
-              icon: Icon(destination.icon),
-              selectedIcon: Icon(destination.activeIcon),
-              label: Text(t(destination.labelKey)),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                for (final destination in appDestinations)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: IconButton(
+                      tooltip: t(destination.labelKey),
+                      isSelected: destination.route == '/'
+                          ? path == '/'
+                          : path.startsWith(destination.route),
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                        backgroundColor:
+                            (destination.route == '/'
+                                ? path == '/'
+                                : path.startsWith(destination.route))
+                            ? theme.colorScheme.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        foregroundColor: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      selectedIcon: Icon(
+                        destination.activeIcon,
+                        color: theme.colorScheme.primary,
+                      ),
+                      icon: Icon(destination.icon, size: 22),
+                      onPressed: () => context.go(destination.route),
+                    ),
+                  ),
+              ],
             ),
-        ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: IconButton(
+            tooltip: t('profile.title'),
+            onPressed: () => context.push('/profile'),
+            icon: const Icon(Icons.person_outline_rounded),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _navigationTile(
+    BuildContext context,
+    AppDestination destination,
+    String label,
+  ) {
+    final selected = destination.route == '/'
+        ? path == '/'
+        : path.startsWith(destination.route);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: ListTile(
+        dense: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+        selected: selected,
+        selectedTileColor: Theme.of(context).colorScheme.primary
+            .withValues(alpha: .18),
+        leading: Icon(
+          selected ? destination.activeIcon : destination.icon,
+          size: 22,
+        ),
+        title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        onTap: () => context.go(destination.route),
       ),
     );
   }

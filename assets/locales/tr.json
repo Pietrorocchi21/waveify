@@ -212,6 +212,16 @@
     "dailyMixesSubtitle": "Sevdiğin sanatçılar ve türler etrafında hazırlanan taze çalma listeleri"
   },
   "library": {
+    "import_audio": "Ses dosyalarını içe aktar",
+    "files_imported": "{count} dosya içe aktarıldı",
+    "on_device": "Bu cihazda",
+    "local_empty": "Bu cihazda ses dosyası yok",
+    "local_hint": "Dinlemeye başlamak için ses dosyalarını içe aktarın.",
+    "cloud": "Bulut",
+    "cloud_empty": "Bulut kitaplığınızda ses dosyası yok",
+    "upload_cloud": "Buluta yükle",
+    "uploaded_cloud": "Buluta yüklendi",
+    "your_music": "Müziğiniz",
     "title": "Kitaplık",
     "liked_songs": "Beğenilen Şarkılar",
     "song": "şarkı",
@@ -243,6 +253,7 @@
     "remove_from_liked": "Beğenilen şarkılardan kaldır"
   },
   "login": {
+    "continue_local": "Hesap olmadan devam et",
     "welcome_back": "Tekrar hoş geldin",
     "sign_in_to_account": "Hesabına giriş yap",
     "auth_title_login": "Senin müziğin, senin tarzın",
@@ -348,12 +359,14 @@
       "account_created": "Hesap oluşturuldu!",
       "logged_in": "Giriş yapıldı!"
     },
-    "no_account_action": "Hesap oluştur"
+    "no_account_action": "Hesap oluştur",
+    "confirm_email_pending": "Kaydınızı onaylamak için e-postanızı kontrol edin, ardından giriş yapın."
   },
   "player": {
     "repeat_off": "Tekrar: kapalı",
     "repeat_all": "Tekrar: tümü",
     "repeat_one": "Tekrar: parça",
+    "open_player": "Oynatıcıyı aç",
     "nothing_playing": "Çalan bir şey yok",
     "choose_track": "Aramadan bir parça seç",
     "queue": "Sıra",
@@ -404,7 +417,9 @@
     "reorder_queue": "Sırayı yeniden düzenle",
     "lyrics_offset_hint": "Negatif değer şarkı sözünü öne alır",
     "next": "Sonraki",
-    "previous": "Önceki"
+    "previous": "Önceki",
+    "lyrics_instrumental": "Instrumental track",
+    "lyrics_unsynced": "Timed lyrics are unavailable for this recording."
   },
   "playlist": {
     "playlist": "Çalma listesi",
@@ -435,9 +450,28 @@
     "albums": "Albümler",
     "playlists": "Çalma listeleri",
     "no_results": "Sonuç bulunamadı",
-    "type_to_search": "Aramak için yaz"
+    "type_to_search": "Aramak için yaz",
+    "online": "Online · Audius",
+    "library": "My library",
+    "online_prompt": "Search music to stream online"
   },
   "settings": {
+    "updater": {
+      "unsupported": "Automatic updates are not supported on this platform.",
+      "check": "Check for updates",
+      "available": "Update available",
+      "available_version": "Version {version} available",
+      "up_to_date": "You are up to date",
+      "error": "Update check failed.",
+      "checking": "Checking for updates…",
+      "downloading": "Downloading update",
+      "ready": "Update verified and ready. Your library and settings will be kept.",
+      "installing": "Installing update and restarting…",
+      "install": "Install update",
+      "download": "Download update",
+      "restart_install": "Restart and install",
+      "releases": "Open releases"
+    },
     "title": "Ayarlar",
     "search_placeholder": "Ayarlarda ara...",
     "subtitle": "Tercihlerini yönet",
@@ -857,7 +891,10 @@
     "customization.content": "İçerik",
     "customization.miniplayer": "Mini oynatıcı",
     "customization.glass_preset": "Cam hazır ayarı, blokların arkasını bulanıklaştırır.",
-    "customization.apply_to_all": "Hepsine uygula"
+    "customization.apply_to_all": "Hepsine uygula",
+    "discord": {
+      "unsupported": "Discord Rich Presence is unavailable on this platform."
+    }
   },
   "toast": {
     "playlist_created": "Çalma listesi oluşturuldu",

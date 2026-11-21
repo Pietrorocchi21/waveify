@@ -77,7 +77,8 @@ class LyricsQuality {
       content: asInt(json['content']),
       sync: asInt(json['sync']),
       source: asInt(json['source']),
-      reasons: (json['reasons'] as List?)
+      reasons:
+          (json['reasons'] as List?)
               ?.map((e) => asString(e))
               .where((e) => e.isNotEmpty)
               .toList(growable: false) ??
@@ -103,6 +104,7 @@ class LyricsCandidate {
     this.syncLevel = LyricsSyncLevel.plain,
     this.quality = const LyricsQuality(),
     this.topPriority = false,
+    this.isInstrumental = false,
     this.matchedTitle,
     this.matchedArtists = const [],
     this.matchedDurationMs,
@@ -127,12 +129,12 @@ class LyricsCandidate {
       quality: LyricsQuality.fromJson(asRecord(json['quality'])),
       topPriority: asBool(json['topPriority']),
       matchedTitle: matched == null ? null : asStringOrNull(matched['title']),
-      matchedArtists: (matched?['artists'] as List?)
+      matchedArtists:
+          (matched?['artists'] as List?)
               ?.map((e) => asString(e))
               .toList(growable: false) ??
           const [],
-      matchedDurationMs:
-          matched == null ? null : asDurationMs(matched),
+      matchedDurationMs: matched == null ? null : asDurationMs(matched),
     );
   }
 
@@ -143,6 +145,7 @@ class LyricsCandidate {
   final LyricsSyncLevel syncLevel;
   final LyricsQuality quality;
   final bool topPriority;
+  final bool isInstrumental;
   final String? matchedTitle;
   final List<String> matchedArtists;
   final int? matchedDurationMs;
@@ -246,31 +249,43 @@ class SyncedLine {
   final List<LyricWord> words;
 
   SyncedLine offset(int offsetMs) => SyncedLine(
-        timeMs: (timeMs + offsetMs).clamp(0, 1 << 62),
-        durationMs: durationMs,
-        text: text,
-        isInstrumental: isInstrumental,
-        words: [
-          for (final w in words)
-            LyricWord(
-              timeMs: (w.timeMs + offsetMs).clamp(0, 1 << 62),
-              endMs: (w.endMs + offsetMs).clamp(0, 1 << 62),
-              text: w.text,
-              isBackground: w.isBackground,
-            ),
-        ],
-      );
+    timeMs: (timeMs + offsetMs).clamp(0, 1 << 62),
+    durationMs: durationMs,
+    text: text,
+    isInstrumental: isInstrumental,
+    words: [
+      for (final w in words)
+        LyricWord(
+          timeMs: (w.timeMs + offsetMs).clamp(0, 1 << 62),
+          endMs: (w.endMs + offsetMs).clamp(0, 1 << 62),
+          text: w.text,
+          isBackground: w.isBackground,
+        ),
+    ],
+  );
 }
 
 /// The result of parsing raw lyrics.
 class ParsedLyrics {
-  const ParsedLyrics({
-    this.syncedLines = const [],
-    this.plainLyrics,
-  });
+  const ParsedLyrics({this.syncedLines = const [], this.plainLyrics});
 
   final List<SyncedLine> syncedLines;
   final String? plainLyrics;
+
+  /// Latest timestamp at or before the audio position, including after seeks.
+  int activeLineIndex(int positionMs) {
+    var low = 0;
+    var high = syncedLines.length;
+    while (low < high) {
+      final middle = (low + high) ~/ 2;
+      if (syncedLines[middle].timeMs <= positionMs) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    return low - 1;
+  }
 
   bool get isEmpty => syncedLines.isEmpty && (plainLyrics == null);
 

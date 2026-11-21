@@ -1,5 +1,11 @@
 {
+  "gallery": {
+    "title": "Spatial gallery",
+    "demo": "Demo collection",
+    "standard": "Standard view"
+  },
   "artist": {
+    "open_album": "Open album",
     "no_biography": "No biography",
     "followers": "followers",
     "total_listens": "total listens",
@@ -197,6 +203,10 @@
     "download_offline": "Download for offline"
   },
   "home": {
+    "room_title": "Let the music take you.",
+    "room_subtitle": "A soundtrack for this moment.",
+    "recent_listening": "Recently played",
+    "your_playlists": "Your playlists",
     "speedDial": "Speed dial",
     "goodMorning": "Good morning",
     "goodAfternoon": "Good afternoon",
@@ -214,6 +224,16 @@
     "dailyMixesSubtitle": "Fresh playlists curated around your favorite artists and genres"
   },
   "library": {
+    "import_audio": "Import audio",
+    "files_imported": "Imported {count} files",
+    "on_device": "On this device",
+    "local_empty": "No audio on this device",
+    "local_hint": "Import audio files to start listening.",
+    "cloud": "Cloud",
+    "cloud_empty": "No audio in your cloud library",
+    "upload_cloud": "Upload to cloud",
+    "uploaded_cloud": "Uploaded to cloud",
+    "your_music": "Your music",
     "title": "Library",
     "liked_songs": "Liked Songs",
     "song": "song",
@@ -245,6 +265,7 @@
     "remove_from_liked": "Remove from Liked Songs"
   },
   "login": {
+    "continue_local": "Continue without an account",
     "welcome_back": "Welcome back",
     "sign_in_to_account": "Sign in to your account",
     "auth_title_login": "Your music, your way",
@@ -350,19 +371,21 @@
       "account_created": "Account created!",
       "logged_in": "Logged in!"
     },
-    "no_account_action": "Create an account"
+    "no_account_action": "Create an account",
+    "confirm_email_pending": "Check your email to confirm your registration, then sign in."
   },
   "player": {
+    "find_on_audius": "Look for this track on Audius",
     "repeat_off": "Repeat: off",
     "repeat_all": "Repeat: all",
     "repeat_one": "Repeat: track",
+    "open_player": "Open player",
     "nothing_playing": "Nothing playing",
     "choose_track": "Choose a track in search",
     "queue": "Queue",
     "lyrics": "Lyrics",
     "volume": "Volume",
     "previous": "Previous",
-    "open_player": "Open player",
     "next": "Next",
     "repeat": "Repeat",
     "lyrics_upgraded": "Lyrics upgraded!",
@@ -409,7 +432,9 @@
     "reverb_hint": "Atmospheric space & ambient depth",
     "reverb_amount": "Reverb",
     "reorder_queue": "Reorder queue",
-    "lyrics_offset_hint": "Negative moves the lyrics earlier, positive later"
+    "lyrics_offset_hint": "Negative moves the lyrics earlier, positive later",
+    "lyrics_instrumental": "Instrumental track",
+    "lyrics_unsynced": "Timed lyrics are unavailable for this recording."
   },
   "playlist": {
     "playlist": "Playlist",
@@ -441,9 +466,28 @@
     "albums": "Albums",
     "playlists": "Playlists",
     "no_results": "No results found",
-    "type_to_search": "Type to search"
+    "type_to_search": "Type to search",
+    "online": "Online · Audius",
+    "library": "My library",
+    "online_prompt": "Search music to stream online"
   },
   "settings": {
+    "updater": {
+      "unsupported": "Automatic updates are not supported on this platform.",
+      "check": "Check for updates",
+      "available": "Update available",
+      "available_version": "Version {version} available",
+      "up_to_date": "You are up to date",
+      "error": "Update check failed.",
+      "checking": "Checking for updates…",
+      "downloading": "Downloading update",
+      "ready": "Update verified and ready. Your library and settings will be kept.",
+      "installing": "Installing update and restarting…",
+      "install": "Install update",
+      "download": "Download update",
+      "restart_install": "Restart and install",
+      "releases": "Open releases"
+    },
     "title": "Settings",
     "search_placeholder": "Search settings...",
     "subtitle": "Manage your preferences",
@@ -610,9 +654,12 @@
         "ready": "Ready",
         "waiting": "Waiting for Discord",
         "disabled": "Disabled"
-      }
+      },
+      "unsupported": "Discord Rich Presence is unavailable on this platform."
     },
     "customization": {
+      "video_backdrop": "Music video background",
+      "video_backdrop_desc": "Show an available music video behind the player while the track plays.",
       "description": "Window background wallpaper, transparency and block blur effects.",
       "apply_to_overlay": "Apply to overlay mini player",
       "apply_to_overlay_desc": "Render the custom background and glass styling on the floating mini player.",

@@ -18,6 +18,7 @@ class CatalogCollection {
     this.coverUrl = '',
     this.tracks = const [],
     this.durationMs = 0,
+    this.year,
   });
 
   final String type;
@@ -28,40 +29,42 @@ class CatalogCollection {
   final String coverUrl;
   final List<Track> tracks;
   final int durationMs;
+  final int? year;
 }
 
 /// Loads a catalog album or playlist.
 final catalogCollectionProvider =
     FutureProvider.family<CatalogCollection, String>((ref, id) async {
-  final catalog = ref.read(catalogProvider);
+      final catalog = ref.read(catalogProvider);
 
-  // The endpoint differs per collection type; try the album first and fall
-  // back to the playlist endpoint.
-  try {
-    final album = await catalog.getAlbum(id);
-    return CatalogCollection(
-      type: 'album',
-      id: album.id,
-      title: album.title,
-      subtitle: album.artists.map((a) => a.name).join(', '),
-      coverUrl: album.cover?.url ?? '',
-      tracks: album.tracks,
-      durationMs: album.durationMs,
-    );
-  } catch (_) {
-    final playlist = await catalog.getPlaylist(id);
-    return CatalogCollection(
-      type: 'playlist',
-      id: playlist.id,
-      title: playlist.title,
-      subtitle: playlist.author ?? '',
-      description: playlist.description,
-      coverUrl: playlist.cover?.url ?? '',
-      tracks: playlist.tracks,
-      durationMs: playlist.durationMs,
-    );
-  }
-});
+      // The endpoint differs per collection type; try the album first and fall
+      // back to the playlist endpoint.
+      try {
+        final album = await catalog.getAlbum(id);
+        return CatalogCollection(
+          type: 'album',
+          id: album.id,
+          title: album.title,
+          subtitle: album.artists.map((a) => a.name).join(', '),
+          coverUrl: album.cover?.url ?? '',
+          tracks: album.tracks,
+          durationMs: album.durationMs,
+          year: album.year,
+        );
+      } catch (_) {
+        final playlist = await catalog.getPlaylist(id);
+        return CatalogCollection(
+          type: 'playlist',
+          id: playlist.id,
+          title: playlist.title,
+          subtitle: playlist.author ?? '',
+          description: playlist.description,
+          coverUrl: playlist.cover?.url ?? '',
+          tracks: playlist.tracks,
+          durationMs: playlist.durationMs,
+        );
+      }
+    });
 
 /// The detail view of a catalog album or playlist.
 class CollectionPage extends ConsumerWidget {
@@ -76,7 +79,9 @@ class CollectionPage extends ConsumerWidget {
     final collection = ref.watch(catalogCollectionProvider(collectionId));
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         title: Text(collection.valueOrNull?.title ?? t('collection.playlist')),
       ),
       body: collection.when(
@@ -94,11 +99,7 @@ class CollectionPage extends ConsumerWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CoverImage(
-                    url: data.coverUrl,
-                    size: 140,
-                    borderRadius: 12,
-                  ),
+                  CoverImage(url: data.coverUrl, size: 140, borderRadius: 12),
                   const SizedBox(width: 20),
                   Expanded(
                     child: Column(
@@ -136,14 +137,16 @@ class CollectionPage extends ConsumerWidget {
                               onPressed: data.tracks.isEmpty
                                   ? null
                                   : () => ref
-                                      .read(playerControllerProvider.notifier)
-                                      .playTrack(
-                                        data.tracks.first,
-                                        queue: data.tracks,
-                                        context: '${data.type}:${data.id}',
-                                      ),
-                              icon:
-                                  const Icon(Icons.play_arrow_rounded, size: 18),
+                                        .read(playerControllerProvider.notifier)
+                                        .playTrack(
+                                          data.tracks.first,
+                                          queue: data.tracks,
+                                          context: '${data.type}:${data.id}',
+                                        ),
+                              icon: const Icon(
+                                Icons.play_arrow_rounded,
+                                size: 18,
+                              ),
                               label: Text(t('common.play_all')),
                             ),
                             const SizedBox(width: 10),
@@ -151,11 +154,11 @@ class CollectionPage extends ConsumerWidget {
                               onPressed: data.tracks.isEmpty
                                   ? null
                                   : () => ref
-                                      .read(playerControllerProvider.notifier)
-                                      .playShuffled(
-                                        data.tracks,
-                                        context: '${data.type}:${data.id}',
-                                      ),
+                                        .read(playerControllerProvider.notifier)
+                                        .playShuffled(
+                                          data.tracks,
+                                          context: '${data.type}:${data.id}',
+                                        ),
                               icon: const Icon(Icons.shuffle_rounded, size: 18),
                               label: Text(t('common.shuffle')),
                             ),

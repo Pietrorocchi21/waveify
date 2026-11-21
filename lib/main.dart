@@ -1,4 +1,10 @@
-import 'dart:io' show Platform;
+import 'dart:io' show File, Platform, exit, pid;
+import 'dart:convert';
+
+import 'core/diagnostics/native_self_test.dart';
+import 'core/diagnostics/network_self_test.dart';
+import 'core/diagnostics/ota_self_test.dart';
+import 'core/diagnostics/update_feed_self_test.dart';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +35,63 @@ Future<void> main(List<String> args) async {
   // Desktop audio backend: libmpv through media_kit. It backs the same
   // `just_audio` API used on mobile and adds Opus/WebM support on Windows.
   JustAudioMediaKit.ensureInitialized();
+  if (args.contains('--self-test')) {
+    final output = args
+        .where((arg) => arg.startsWith('--self-test-output='))
+        .firstOrNull;
+    final ok = await runNativeSelfTest(
+      output == null
+          ? 'waveify-self-test.json'
+          : output.substring('--self-test-output='.length),
+      videoPath: args
+          .where((arg) => arg.startsWith('--self-test-video='))
+          .firstOrNull
+          ?.substring('--self-test-video='.length),
+    );
+    exit(ok ? 0 : 1);
+  }
+
+  String? argument(String name) => args
+      .where((arg) => arg.startsWith('$name='))
+      .firstOrNull
+      ?.substring(name.length + 1);
+  if (args.contains('--update-feed-self-test')) {
+    final passed = await runUpdateFeedSelfTest(
+      argument('--self-test-output') ?? 'waveify-feed-test.json',
+    );
+    exit(passed ? 0 : 1);
+  }
+  if (args.contains('--network-self-test')) {
+    final passed = await runNetworkSelfTest(
+      argument('--self-test-output') ?? 'waveify-network-test.json',
+    );
+    exit(passed ? 0 : 1);
+  }
+  if (args.contains('--ota-self-test')) {
+    final report = argument('--ota-report')!;
+    try {
+      await startOtaSelfTest(
+        installerPath: argument('--ota-installer')!,
+        hash: argument('--ota-sha256')!,
+        targetExecutable: argument('--ota-target')!,
+        reportPath: report,
+        startupPath: argument('--ota-startup')!,
+      );
+      exit(0);
+    } catch (error) {
+      await File('$report.host-error.json').writeAsString(
+        jsonEncode({
+          'status': 'failed',
+          'error_type': '${error.runtimeType}',
+          'message': '$error',
+        }),
+        flush: true,
+      );
+      exit(1);
+    }
+  }
+  final otaReport = argument('--ota-verify-state');
+  if (otaReport != null) await verifyOtaSelfTest(otaReport);
 
   // The updater is prepared before the first frame.
   UpdaterService.instance.initialize();
@@ -57,9 +120,7 @@ Future<void> main(List<String> args) async {
   }
 
   final container = ProviderContainer(
-    overrides: [
-      audioHandlerProvider.overrideWithValue(handler),
-    ],
+    overrides: [audioHandlerProvider.overrideWithValue(handler)],
   );
 
   // Restore the persisted settings and session before the first frame.
@@ -71,10 +132,29 @@ Future<void> main(List<String> args) async {
   // The deep links (waveify://) are listened to as soon as the app starts.
   await container.read(deepLinkServiceProvider).start();
 
+  final startupOutput = args
+      .where((arg) => arg.startsWith('--startup-report='))
+      .firstOrNull;
+  if (startupOutput != null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final file = File(startupOutput.substring('--startup-report='.length));
+      await file.parent.create(recursive: true);
+      await file.writeAsString(
+        jsonEncode({
+          'status': 'passed',
+          'first_frame': 'rendered',
+          'pid': pid,
+          'window_fits_work_area': await WindowService.instance.fitsWorkArea(),
+          'authenticated': container
+              .read(authControllerProvider)
+              .isAuthenticated,
+        }),
+        flush: true,
+      );
+    });
+  }
+
   runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: const WaveifyApp(),
-    ),
+    UncontrolledProviderScope(container: container, child: const WaveifyApp()),
   );
 }

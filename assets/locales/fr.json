@@ -214,6 +214,16 @@
     "dailyMixesSubtitle": "Des playlists fraîches composées autour de vos artistes et genres préférés"
   },
   "library": {
+    "import_audio": "Importer des fichiers audio",
+    "files_imported": "{count} fichiers importés",
+    "on_device": "Sur cet appareil",
+    "local_empty": "Aucun fichier audio sur cet appareil",
+    "local_hint": "Importez des fichiers audio pour commencer à écouter.",
+    "cloud": "Cloud",
+    "cloud_empty": "Aucun fichier audio dans votre bibliothèque cloud",
+    "upload_cloud": "Envoyer dans le cloud",
+    "uploaded_cloud": "Envoyé dans le cloud",
+    "your_music": "Votre musique",
     "title": "Bibliothèque",
     "liked_songs": "Titres aimés",
     "song": "titre",
@@ -245,6 +255,7 @@
     "remove_from_liked": "Retirer des titres aimés"
   },
   "login": {
+    "continue_local": "Continuer sans compte",
     "welcome_back": "Bon retour",
     "sign_in_to_account": "Connectez-vous à votre compte",
     "auth_title_login": "Votre musique, à votre façon",
@@ -350,12 +361,14 @@
       "account_created": "Compte créé !",
       "logged_in": "Connecté !"
     },
-    "no_account_action": "Créer un compte"
+    "no_account_action": "Créer un compte",
+    "confirm_email_pending": "Consultez votre e-mail pour confirmer votre inscription, puis connectez-vous."
   },
   "player": {
     "repeat_off": "Répéter : désactivé",
     "repeat_all": "Répéter : tout",
     "repeat_one": "Répéter : titre",
+    "open_player": "Ouvrir le lecteur",
     "nothing_playing": "Aucune lecture en cours",
     "choose_track": "Choisissez un titre dans la recherche",
     "queue": "File d'attente",
@@ -406,7 +419,9 @@
     "reorder_queue": "Réorganiser la file d'attente",
     "lyrics_offset_hint": "Une valeur négative avance les paroles",
     "next": "Suivant",
-    "previous": "Précédent"
+    "previous": "Précédent",
+    "lyrics_instrumental": "Instrumental track",
+    "lyrics_unsynced": "Timed lyrics are unavailable for this recording."
   },
   "playlist": {
     "playlist": "Playlist",
@@ -437,9 +452,28 @@
     "albums": "Albums",
     "playlists": "Playlists",
     "no_results": "Aucun résultat",
-    "type_to_search": "Tapez pour rechercher"
+    "type_to_search": "Tapez pour rechercher",
+    "online": "Online · Audius",
+    "library": "My library",
+    "online_prompt": "Search music to stream online"
   },
   "settings": {
+    "updater": {
+      "unsupported": "Automatic updates are not supported on this platform.",
+      "check": "Check for updates",
+      "available": "Update available",
+      "available_version": "Version {version} available",
+      "up_to_date": "You are up to date",
+      "error": "Update check failed.",
+      "checking": "Checking for updates…",
+      "downloading": "Downloading update",
+      "ready": "Update verified and ready. Your library and settings will be kept.",
+      "installing": "Installing update and restarting…",
+      "install": "Install update",
+      "download": "Download update",
+      "restart_install": "Restart and install",
+      "releases": "Open releases"
+    },
     "title": "Paramètres",
     "search_placeholder": "Rechercher dans les paramètres...",
     "subtitle": "Gérez vos préférences",
@@ -859,7 +893,10 @@
     "customization.content": "Contenu",
     "customization.miniplayer": "Mini lecteur",
     "customization.glass_preset": "Le préréglage verre floute ce qui est derrière les blocs.",
-    "customization.apply_to_all": "Appliquer à tout"
+    "customization.apply_to_all": "Appliquer à tout",
+    "discord": {
+      "unsupported": "Discord Rich Presence is unavailable on this platform."
+    }
   },
   "toast": {
     "playlist_created": "Playlist créée",

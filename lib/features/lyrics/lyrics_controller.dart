@@ -10,6 +10,7 @@ import '../player/player_controller.dart';
 import '../player/player_state.dart';
 import 'lyrics_parser.dart';
 import 'lyrics_stream.dart';
+import 'public_lyrics_client.dart';
 
 /// Lyrics state for the currently playing track.
 class LyricsState {
@@ -34,6 +35,7 @@ class LyricsState {
   LyricsState copyWith({
     String? trackId,
     bool clearTrackId = false,
+    bool clearContent = false,
     bool? isLoading,
     String? error,
     bool clearError = false,
@@ -46,8 +48,8 @@ class LyricsState {
       trackId: clearTrackId ? null : (trackId ?? this.trackId),
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
-      candidate: candidate ?? this.candidate,
-      parsed: parsed ?? this.parsed,
+      candidate: clearContent ? null : candidate ?? this.candidate,
+      parsed: clearContent ? null : parsed ?? this.parsed,
       providers: providers ?? this.providers,
       offsetMs: offsetMs ?? this.offsetMs,
     );
@@ -56,12 +58,34 @@ class LyricsState {
 
 /// Loads and exposes the lyrics of the current track.
 class LyricsController extends Notifier<LyricsState> {
+  LyricsController({this.streamFactory, this.publicClient});
+
+  final LyricsStream Function()? streamFactory;
+  final PublicLyricsClient? publicClient;
+  late PublicLyricsClient _fallback;
   CancelToken? _cancel;
   int _loadToken = 0;
 
   @override
   LyricsState build() {
+    _fallback = publicClient ?? PublicLyricsClient();
     final offset = ref.read(settingsProvider).lyricsOffsetMs;
+    ref.listen<int>(settingsProvider.select((s) => s.lyricsOffsetMs), (
+      _,
+      next,
+    ) {
+      if (next == state.offsetMs) return;
+      final candidate = state.candidate;
+      state = state.copyWith(
+        offsetMs: next,
+        parsed: candidate == null
+            ? null
+            : LyricsParser.parse(
+                candidate.content,
+                format: candidate.format.raw,
+              ).offset(next),
+      );
+    });
 
     // The lyrics follow the playing track: they are loaded as soon as a
     // track starts and dropped when the player goes idle.
@@ -75,6 +99,13 @@ class LyricsController extends Notifier<LyricsState> {
       Future<void>.microtask(() => load(track));
     });
 
+    final current = ref.read(playerControllerProvider).currentTrack;
+    if (current != null) Future<void>.microtask(() => load(current));
+    ref.onDispose(() {
+      _loadToken++;
+      _cancel?.cancel('disposed');
+      if (publicClient == null) _fallback.close();
+    });
     return LyricsState(offsetMs: offset);
   }
 
@@ -91,28 +122,37 @@ class LyricsController extends Notifier<LyricsState> {
       trackId: track.id,
       isLoading: true,
       clearError: true,
-      candidate: null,
-      parsed: null,
+      clearContent: true,
       providers: const [],
     );
 
-    final stream = LyricsStream(client: ref.read(apiClientProvider));
+    final stream =
+        streamFactory?.call() ??
+        LyricsStream(client: ref.read(apiClientProvider));
 
     LyricsCandidate? best;
     final providers = <LyricsProviderOption>[];
 
+    Object? backendError;
     try {
-      await for (final event in stream.events(
-        trackId: track.id,
-        title: track.title,
-        artist: track.artists,
-        durationMs: track.durationMs,
-        cancelToken: cancel,
-      )) {
+      eventsLoop:
+      await for (final event
+          in stream
+              .events(
+                trackId: track.id,
+                title: track.title,
+                artist: track.artists,
+                durationMs: track.durationMs,
+                cancelToken: cancel,
+              )
+              .timeout(const Duration(seconds: 20))) {
         if (token != _loadToken) return;
 
         switch (event) {
           case LyricsProviderFoundEvent(:final candidate):
+            if (candidate.content.trim().isEmpty && !candidate.isInstrumental) {
+              break;
+            }
             if (best == null || _isBetter(candidate, best)) {
               best = candidate;
               state = state.copyWith(
@@ -135,18 +175,52 @@ class LyricsController extends Notifier<LyricsState> {
             );
             state = state.copyWith(providers: [...providers]);
           case LyricsDoneEvent():
-            state = state.copyWith(isLoading: false);
-            return;
+            break eventsLoop;
           case LyricsProviderErrorEvent():
           case LyricsProviderNotFoundEvent():
           case LyricsMetadataEvent():
             break;
         }
       }
-      state = state.copyWith(isLoading: false);
+    } catch (err) {
+      backendError = err;
+    }
+    if (token != _loadToken || cancel.isCancelled) return;
+    try {
+      if (best == null || best.syncLevel == LyricsSyncLevel.plain) {
+        final fallback = _fallback;
+        try {
+          final candidate = await fallback.get(track, cancelToken: cancel);
+          if (token != _loadToken) return;
+          if (candidate != null &&
+              (best == null || _isBetter(candidate, best))) {
+            providers.add(
+              LyricsProviderOption(
+                provider: candidate.provider,
+                syncLevel: candidate.syncLevel,
+                quality: candidate.quality.total,
+                candidate: candidate,
+              ),
+            );
+            state = state.copyWith(
+              providers: [...providers],
+              candidate: candidate,
+              parsed: LyricsParser.parse(
+                candidate.content,
+                format: candidate.format.raw,
+                songDurationMs: track.durationMs,
+              ).offset(state.offsetMs),
+            );
+          }
+        } catch (err) {
+          if (best == null) rethrow;
+        }
+      }
+      if (token != _loadToken || cancel.isCancelled) return;
+      state = state.copyWith(isLoading: false, clearError: true);
     } catch (err) {
       if (token != _loadToken) return;
-      state = state.copyWith(isLoading: false, error: '$err');
+      state = state.copyWith(isLoading: false, error: '${backendError ?? err}');
     }
   }
 
@@ -165,10 +239,19 @@ class LyricsController extends Notifier<LyricsState> {
 
   /// Applies a manual timing offset.
   Future<void> setOffset(int offsetMs) async {
+    final previousOffset = state.offsetMs;
     state = state.copyWith(offsetMs: offsetMs);
     final parsed = state.parsed;
     if (parsed != null) {
-      state = state.copyWith(parsed: parsed.offset(offsetMs));
+      final candidate = state.candidate;
+      state = state.copyWith(
+        parsed: candidate == null
+            ? parsed.offset(offsetMs - previousOffset)
+            : LyricsParser.parse(
+                candidate.content,
+                format: candidate.format.raw,
+              ).offset(offsetMs),
+      );
     }
     await ref.read(settingsProvider.notifier).setLyricsOffset(offsetMs);
   }
@@ -181,6 +264,9 @@ class LyricsController extends Notifier<LyricsState> {
   }
 
   static bool _isBetter(LyricsCandidate a, LyricsCandidate b) {
+    if (_syncRank(a.syncLevel) != _syncRank(b.syncLevel)) {
+      return _syncRank(a.syncLevel) > _syncRank(b.syncLevel);
+    }
     if (a.topPriority && !b.topPriority) return true;
     if (a.quality.total != b.quality.total) {
       return a.quality.total > b.quality.total;

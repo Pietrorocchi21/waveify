@@ -15,11 +15,11 @@ import 'api_exception.dart';
 class ApiClient {
   ApiClient({
     Dio? dio,
-    Future<String?> Function()? tokenProvider,
-    Future<bool> Function()? onRefreshSession,
-  })  : _tokenProvider = tokenProvider,
-        _onRefreshSession = onRefreshSession {
-    _dio = dio ??
+    this._tokenProvider,
+    this._onRefreshSession,
+  }) {
+    _dio =
+        dio ??
         Dio(
           BaseOptions(
             baseUrl: AppConfig.apiBaseUrl,
@@ -47,7 +47,8 @@ class ApiClient {
     int? status,
     String? code,
     int latencyMs,
-  })? onFailure;
+  })?
+  onFailure;
 
   Dio get raw => _dio;
 
@@ -65,17 +66,18 @@ class ApiClient {
     if (method == 'GET') {
       final existing = _inFlightGetRequests[key];
       if (existing != null) return existing;
-      final future = _execute<dynamic>(
-        path,
-        method: method,
-        body: body,
-        query: query,
-        allowRefresh: allowRefresh,
-        timeout: timeout,
-        skipAuth: skipAuth,
-      ).whenComplete(() {
-        _inFlightGetRequests.remove(key);
-      });
+      final future =
+          _execute<dynamic>(
+            path,
+            method: method,
+            body: body,
+            query: query,
+            allowRefresh: allowRefresh,
+            timeout: timeout,
+            skipAuth: skipAuth,
+          ).whenComplete(() {
+            _inFlightGetRequests.remove(key);
+          });
       _inFlightGetRequests[key] = future;
       return future;
     }
@@ -129,9 +131,26 @@ class ApiClient {
     try {
       response = await send(token);
     } on DioException catch (err) {
-      final mapped = _mapDioError(err);
-      _reportFailure(path, method, mapped, started);
-      throw mapped;
+      if (err.response?.statusCode == 401 &&
+          allowRefresh &&
+          !path.startsWith('/v1/auth/')) {
+        final refreshed = await _onRefreshSession?.call() ?? false;
+        if (refreshed) {
+          try {
+            response = await send(await _tokenProvider?.call());
+          } on DioException catch (retryError) {
+            throw _mapDioError(retryError);
+          }
+        } else {
+          final mapped = _mapDioError(err);
+          _reportFailure(path, method, mapped, started);
+          throw mapped;
+        }
+      } else {
+        final mapped = _mapDioError(err);
+        _reportFailure(path, method, mapped, started);
+        throw mapped;
+      }
     }
 
     if (response.statusCode == 401 &&
@@ -151,7 +170,8 @@ class ApiClient {
     final status = response.statusCode ?? 0;
     if (status < 200 || status >= 300) {
       final map = asRecord(response.data);
-      final requestId = response.headers.value('x-request-id') ??
+      final requestId =
+          response.headers.value('x-request-id') ??
           asStringOrNull(map?['reqId']) ??
           asStringOrNull(map?['requestId']);
       throw ApiException(
@@ -260,18 +280,13 @@ class ApiClient {
       cancelToken: cancelToken,
       options: Options(
         responseType: ResponseType.stream,
-        headers: {
-          if (token != null) 'authorization': 'Bearer $token',
-        },
+        headers: {if (token != null) 'authorization': 'Bearer $token'},
       ),
     );
 
     final status = response.statusCode ?? 0;
     if (status < 200 || status >= 300) {
-      throw ApiException(
-        status,
-        'Streaming request failed with HTTP $status.',
-      );
+      throw ApiException(status, 'Streaming request failed with HTTP $status.');
     }
 
     final data = response.data;

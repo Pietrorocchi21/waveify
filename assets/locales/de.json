@@ -212,6 +212,16 @@
     "dailyMixesSubtitle": "Frische Playlists rund um deine Lieblingskünstler und Lieblingsgenres"
   },
   "library": {
+    "import_audio": "Audio importieren",
+    "files_imported": "{count} Dateien importiert",
+    "on_device": "Auf diesem Gerät",
+    "local_empty": "Keine Audiodateien auf diesem Gerät",
+    "local_hint": "Importiere Audiodateien, um Musik zu hören.",
+    "cloud": "Cloud",
+    "cloud_empty": "Keine Audiodateien in deiner Cloud-Mediathek",
+    "upload_cloud": "In die Cloud hochladen",
+    "uploaded_cloud": "In die Cloud hochgeladen",
+    "your_music": "Deine Musik",
     "title": "Mediathek",
     "liked_songs": "Lieblingstitel",
     "song": "Titel",
@@ -243,6 +253,7 @@
     "remove_from_liked": "Aus Lieblingssongs entfernen"
   },
   "login": {
+    "continue_local": "Ohne Konto fortfahren",
     "welcome_back": "Willkommen zurück!",
     "sign_in_to_account": "Melde dich bei deinem Konto an",
     "auth_title_login": "Deine Musik, auf deine Art",
@@ -348,12 +359,14 @@
       "account_created": "Konto erstellt!",
       "logged_in": "Angemeldet!"
     },
-    "no_account_action": "Konto erstellen"
+    "no_account_action": "Konto erstellen",
+    "confirm_email_pending": "Bestätige deine Registrierung über die E-Mail und melde dich anschließend an."
   },
   "player": {
     "repeat_off": "Wiederholung: aus",
     "repeat_all": "Wiederholung: alle",
     "repeat_one": "Wiederholung: Titel",
+    "open_player": "Player öffnen",
     "nothing_playing": "Keine Wiedergabe",
     "choose_track": "Wähle in der Suche einen Titel aus",
     "queue": "Warteschlange",
@@ -361,7 +374,6 @@
     "volume": "Lautstärke",
     "repeat": "Wiederholung",
     "previous": "Vorher",
-    "open_player": "Player öffnen",
     "next": "Weiter",
     "lyrics_upgraded": "Songtext verbessert!",
     "playing_from": "Wiedergabe von",
@@ -407,7 +419,9 @@
     "reverb_hint": "Atmosphärischer Raum & Tiefe",
     "reverb_amount": "Hall",
     "reorder_queue": "Warteschlange umsortieren",
-    "lyrics_offset_hint": "Ein negativer Wert verschiebt den Text früher"
+    "lyrics_offset_hint": "Ein negativer Wert verschiebt den Text früher",
+    "lyrics_instrumental": "Instrumental track",
+    "lyrics_unsynced": "Timed lyrics are unavailable for this recording."
   },
   "playlist": {
     "playlist": "Playlist",
@@ -438,9 +452,28 @@
     "albums": "Alben",
     "playlists": "Playlists",
     "no_results": "Keine Ergebnisse gefunden",
-    "type_to_search": "Gib einen Suchbegriff ein"
+    "type_to_search": "Gib einen Suchbegriff ein",
+    "online": "Online · Audius",
+    "library": "My library",
+    "online_prompt": "Search music to stream online"
   },
   "settings": {
+    "updater": {
+      "unsupported": "Automatic updates are not supported on this platform.",
+      "check": "Check for updates",
+      "available": "Update available",
+      "available_version": "Version {version} available",
+      "up_to_date": "You are up to date",
+      "error": "Update check failed.",
+      "checking": "Checking for updates…",
+      "downloading": "Downloading update",
+      "ready": "Update verified and ready. Your library and settings will be kept.",
+      "installing": "Installing update and restarting…",
+      "install": "Install update",
+      "download": "Download update",
+      "restart_install": "Restart and install",
+      "releases": "Open releases"
+    },
     "title": "Einstellungen",
     "search_placeholder": "Einstellungen durchsuchen…",
     "subtitle": "Verwalte deine Präferenzen",
@@ -798,7 +831,10 @@
     "customization.content": "Inhalt",
     "customization.miniplayer": "Mini-Player",
     "customization.glass_preset": "Die Glaspodeste weichzeichnet, was hinter den Blöcken liegt.",
-    "customization.apply_to_all": "Auf alle anwenden"
+    "customization.apply_to_all": "Auf alle anwenden",
+    "discord": {
+      "unsupported": "Discord Rich Presence is unavailable on this platform."
+    }
   },
   "toast": {
     "playlist_created": "Playlist erstellt",

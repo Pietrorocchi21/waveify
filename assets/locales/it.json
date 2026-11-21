@@ -1,5 +1,11 @@
 {
+  "gallery": {
+    "title": "Galleria spaziale",
+    "demo": "Collezione demo",
+    "standard": "Vista standard"
+  },
   "artist": {
+    "open_album": "Apri album",
     "no_biography": "Nessuna biografia",
     "followers": "follower",
     "total_listens": "ascolti totali",
@@ -195,6 +201,10 @@
     "download_offline": "Scarica per l'offline"
   },
   "home": {
+    "room_title": "Lasciati trasportare.",
+    "room_subtitle": "La colonna sonora del tuo momento.",
+    "recent_listening": "Ascoltati di recente",
+    "your_playlists": "Le tue playlist",
     "speedDial": "Accesso rapido",
     "goodMorning": "Buongiorno",
     "goodAfternoon": "Buon pomeriggio",
@@ -212,6 +222,16 @@
     "dailyMixesSubtitle": "Playlist sempre nuove create attorno ai tuoi artisti e generi preferiti"
   },
   "library": {
+    "import_audio": "Importa audio",
+    "files_imported": "Importati {count} file",
+    "on_device": "Su questo dispositivo",
+    "local_empty": "Nessun audio su questo dispositivo",
+    "local_hint": "Importa file audio per iniziare ad ascoltare.",
+    "cloud": "Cloud",
+    "cloud_empty": "Nessun audio nella tua libreria cloud",
+    "upload_cloud": "Carica nel cloud",
+    "uploaded_cloud": "Caricato nel cloud",
+    "your_music": "La tua musica",
     "title": "Libreria",
     "liked_songs": "Brani che ti piacciono",
     "song": "brano",
@@ -243,6 +263,7 @@
     "remove_from_liked": "Rimuovi dai brani preferiti"
   },
   "login": {
+    "continue_local": "Continua senza un account",
     "welcome_back": "Bentornato",
     "sign_in_to_account": "Accedi al tuo account",
     "auth_title_login": "La tua musica, a modo tuo",
@@ -348,12 +369,15 @@
       "account_created": "Account creato!",
       "logged_in": "Accesso effettuato!"
     },
-    "no_account_action": "Crea un account"
+    "no_account_action": "Crea un account",
+    "confirm_email_pending": "Controlla la tua email per confermare la registrazione, poi accedi."
   },
   "player": {
+    "find_on_audius": "Cerca questo brano su Audius",
     "repeat_off": "Ripeti: disattivato",
     "repeat_all": "Ripeti: tutto",
     "repeat_one": "Ripeti: brano",
+    "open_player": "Apri player",
     "nothing_playing": "Nessuna riproduzione",
     "choose_track": "Scegli un brano dalla ricerca",
     "queue": "Coda",
@@ -404,7 +428,9 @@
     "reorder_queue": "Riordina la coda",
     "lyrics_offset_hint": "Un valore negativo anticipa i testi, uno positivo li ritarda",
     "next": "Avanti",
-    "previous": "Indietro"
+    "previous": "Indietro",
+    "lyrics_instrumental": "Brano strumentale",
+    "lyrics_unsynced": "Il testo sincronizzato non è disponibile per questa registrazione."
   },
   "playlist": {
     "playlist": "Playlist",
@@ -435,9 +461,28 @@
     "albums": "Album",
     "playlists": "Playlist",
     "no_results": "Nessun risultato",
-    "type_to_search": "Digita per cercare"
+    "type_to_search": "Digita per cercare",
+    "online": "Online · Audius",
+    "library": "La mia libreria",
+    "online_prompt": "Cerca musica da ascoltare online"
   },
   "settings": {
+    "updater": {
+      "unsupported": "Gli aggiornamenti automatici non sono supportati su questa piattaforma.",
+      "check": "Controlla aggiornamenti",
+      "available": "Aggiornamento disponibile",
+      "available_version": "Versione {version} disponibile",
+      "up_to_date": "Hai la versione più recente",
+      "error": "Controllo non riuscito.",
+      "checking": "Ricerca aggiornamenti…",
+      "downloading": "Download aggiornamento",
+      "ready": "Aggiornamento verificato e pronto. Libreria e impostazioni verranno conservate.",
+      "installing": "Installazione aggiornamento e riavvio…",
+      "install": "Installa aggiornamento",
+      "download": "Scarica aggiornamento",
+      "restart_install": "Riavvia e installa",
+      "releases": "Apri versioni"
+    },
     "title": "Impostazioni",
     "search_placeholder": "Cerca nelle impostazioni...",
     "subtitle": "Gestisci le tue preferenze",
@@ -462,6 +507,7 @@
       "about": "Informazioni",
       "playback": "Riproduzione",
       "shortcuts": "Scorciatoie",
+      "discord": "Discord RPC",
       "overlay": "Overlay",
       "privacy": "Privacy"
     },
@@ -557,6 +603,8 @@
       }
     },
     "customization": {
+      "video_backdrop": "Video musicale come sfondo",
+      "video_backdrop_desc": "Mostra il video musicale dietro al player durante la riproduzione, quando disponibile.",
       "description": "Sfondo della finestra, trasparenza ed effetti di sfocatura dei blocchi.",
       "apply_to_overlay": "Applica al mini player in overlay",
       "apply_to_overlay_desc": "Usa lo sfondo personalizzato e l'effetto vetro anche sul mini player mobile.",
@@ -857,7 +905,10 @@
     "customization.content": "Contenuto",
     "customization.miniplayer": "Mini player",
     "customization.glass_preset": "Il preset vetro sfoca ciò che sta dietro ai blocchi.",
-    "customization.apply_to_all": "Applica a tutti"
+    "customization.apply_to_all": "Applica a tutti",
+    "discord": {
+      "unsupported": "Discord Rich Presence non è disponibile su questa piattaforma."
+    }
   },
   "toast": {
     "playlist_created": "Playlist creata",

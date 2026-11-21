@@ -9,8 +9,10 @@ import '../../../shared/widgets/track_widgets.dart';
 import '../../player/player_controller.dart';
 
 /// Loads an artist page.
-final artistProvider =
-    FutureProvider.family<ArtistDetails, String>((ref, id) async {
+final artistProvider = FutureProvider.family<ArtistDetails, String>((
+  ref,
+  id,
+) async {
   return ref.read(catalogProvider).getArtist(id);
 });
 
@@ -27,7 +29,9 @@ class ArtistPage extends ConsumerWidget {
     final artist = ref.watch(artistProvider(artistId));
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         title: Text(artist.valueOrNull?.name ?? t('artist.tracks')),
       ),
       body: artist.when(
@@ -100,13 +104,16 @@ class ArtistPage extends ConsumerWidget {
                               onPressed: data.tracks.isEmpty
                                   ? null
                                   : () => ref
-                                      .read(playerControllerProvider.notifier)
-                                      .playTrack(
-                                        data.tracks.first,
-                                        queue: data.tracks,
-                                        context: 'artist:${data.id}',
-                                      ),
-                              icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                                        .read(playerControllerProvider.notifier)
+                                        .playTrack(
+                                          data.tracks.first,
+                                          queue: data.tracks,
+                                          context: 'artist:${data.id}',
+                                        ),
+                              icon: const Icon(
+                                Icons.play_arrow_rounded,
+                                size: 18,
+                              ),
                               label: Text(t('artist.play')),
                             ),
                             OutlinedButton.icon(
@@ -142,6 +149,22 @@ class ArtistPage extends ConsumerWidget {
             ],
             if (data.albums.isNotEmpty) ...[
               SectionHeader(title: t('artist.albums')),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push(
+                      Uri(
+                        path: '/gallery',
+                        queryParameters: {'artist': data.id},
+                      ).toString(),
+                    ),
+                    icon: const Icon(Icons.view_in_ar_outlined),
+                    label: Text(t('gallery.title')),
+                  ),
+                ),
+              ),
               _ReleaseRow(releases: data.albums, artistId: data.id),
             ],
             if (data.singles.isNotEmpty) ...[
@@ -176,11 +199,10 @@ class _ReleaseRow extends StatelessWidget {
             title: release.title,
             subtitle: release.year?.toString() ?? '',
             coverUrl: release.cover?.url ?? '',
-            onTap: () =>
-                context.push(
-                  '/collection?type=album'
-                  '&id=${Uri.encodeQueryComponent(release.id)}',
-                ),
+            onTap: () => context.push(
+              '/collection?type=album'
+              '&id=${Uri.encodeQueryComponent(release.id)}',
+            ),
           );
         },
       ),

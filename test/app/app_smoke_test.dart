@@ -127,8 +127,7 @@ class _FakeCatalog extends InnertubeCatalog {
     String query, {
     String type = 'all',
     CancelToken? cancelToken,
-  }) async =>
-      const <SearchItem>[];
+  }) async => const <SearchItem>[];
 
   @override
   Future<Track> getTrack(String id) async => Track(id: id, title: 'x');
@@ -139,9 +138,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets(
-      'shows the login page and lands on the home after signing in',
-      (tester) async {
+  testWidgets('shows the login page and lands on the home after signing in', (
+    tester,
+  ) async {
     final container = ProviderContainer(
       overrides: [
         apiProvider.overrideWithValue(_FakeApi()),
@@ -150,6 +149,9 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
+    await tester.runAsync(
+      () => container.read(settingsProvider.notifier).init(),
+    );
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -170,10 +172,7 @@ void main() {
       find.byType(TextFormField).first,
       'test@example.com',
     );
-    await tester.enterText(
-      find.byType(TextFormField).last,
-      'password123',
-    );
+    await tester.enterText(find.byType(TextFormField).last, 'password123');
     await tester.tap(find.text('Sign in').last);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));

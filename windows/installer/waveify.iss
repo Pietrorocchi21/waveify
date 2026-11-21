@@ -7,7 +7,9 @@
 ;   ISCC.exe windows\installer\waveify.iss
 
 #define AppName "Waveify"
+#ifndef AppVersion
 #define AppVersion "1.0.0"
+#endif
 #define AppPublisher "Waveify"
 #define AppExeName "waveify.exe"
 
@@ -51,5 +53,4 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: deskto
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
-[UninstallDelete]
-Type: filesandordirs; Name: "{app}"
+; Inno Setup removes the files it installed; preserve any user-created files.

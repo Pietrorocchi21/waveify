@@ -13,7 +13,8 @@ class WaveifyAudioHandler extends BaseAudioHandler {
   /// The seek step used by the fast-forward / rewind actions.
   static const Duration seekStep = Duration(seconds: 10);
 
-  WaveifyAudioHandler({AudioPlayer? player}) : _player = player ?? AudioPlayer() {
+  WaveifyAudioHandler({AudioPlayer? player})
+    : _player = player ?? AudioPlayer() {
     _player.playbackEventStream.listen(
       _broadcastState,
       onError: (Object error, StackTrace stackTrace) {
@@ -73,19 +74,19 @@ class WaveifyAudioHandler extends BaseAudioHandler {
     playbackState.add(
       playbackState.value.copyWith(
         processingState: AudioProcessingState.loading,
+        errorCode: null,
+        errorMessage: null,
       ),
     );
 
     this.mediaItem.add(mediaItem);
 
     try {
-      await _player.setAudioSource(
-        AudioSource.uri(
-          Uri.parse(url),
-          headers: headers,
-          tag: mediaItem,
-        ),
-      );
+      await _player
+          .setAudioSource(
+            AudioSource.uri(Uri.parse(url), headers: headers, tag: mediaItem),
+          )
+          .timeout(const Duration(seconds: 15));
     } catch (err) {
       playbackState.add(
         playbackState.value.copyWith(
@@ -114,9 +115,20 @@ class WaveifyAudioHandler extends BaseAudioHandler {
       playbackState.value.copyWith(
         playing: true,
         processingState: AudioProcessingState.ready,
+        errorCode: null,
+        errorMessage: null,
       ),
     );
-    await _player.play();
+    unawaited(
+      _player.play().catchError((Object error, StackTrace stack) {
+        playbackState.add(
+          playbackState.value.copyWith(
+            processingState: AudioProcessingState.error,
+            errorMessage: '$error',
+          ),
+        );
+      }),
+    );
   }
 
   @override
@@ -224,6 +236,8 @@ class WaveifyAudioHandler extends BaseAudioHandler {
         },
         androidCompactActionIndices: const [0, 1, 3],
         processingState: processingState,
+        errorCode: null,
+        errorMessage: null,
         playing: playing,
         updatePosition: _player.position,
       ),

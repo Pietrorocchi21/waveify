@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>WAVEIFY · Conferma email</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#090e19;color:#f4f6ff}*{box-sizing:border-box}body{margin:0;min-height:100svh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at top,#18324b,transparent 70%)}main{width:min(100%,480px);padding:40px 32px;border:1px solid #ffffff24;border-radius:24px;background:#141f2dde;box-shadow:0 24px 80px #0005}h1{font-size:28px;line-height:1.2}p{line-height:1.65;color:#c9d1e2}.brand{letter-spacing:.18em;color:#93d9e8;font-weight:700;font-size:13px}a{display:inline-block;margin-top:16px;color:#b9e8f5;text-underline-offset:5px}a:focus-visible{outline:2px solid #b9e8f5;outline-offset:6px}
+</style>
+</head>
+<body><main><div class="brand">WAVEIFY</div><h1 id="title">Torna alla tua musica</h1><p id="message">Se hai aperto questa pagina dal link di conferma email, torna in WAVEIFY e accedi con email e password. Se l’accesso indica che l’email non è confermata, il link potrebbe essere scaduto o già utilizzato.</p><a href="https://github.com/Pietrorocchi21/waveify/releases/latest">Scarica l’ultima versione</a></main>
+<script>
+// Never store or transmit authentication tokens. Strip them from browser history.
+const query = new URLSearchParams(location.search);
+const fragment = new URLSearchParams(location.hash.slice(1));
+const error = query.has('error') || query.has('error_code') || fragment.has('error') || fragment.has('error_code');
+const confirmed = fragment.has('access_token') && !error;
+history.replaceState(null, '', location.pathname);
+if(error){document.getElementById('title').textContent='Link non valido o scaduto';document.getElementById('message').textContent='Torna in WAVEIFY e prova ad accedere: l’indirizzo potrebbe essere già confermato. Se serve una nuova conferma, richiedi un nuovo link. Non condividere il link ricevuto via email.';}
+else if(confirmed){document.getElementById('title').textContent='Email confermata';document.getElementById('message').textContent='Puoi tornare in WAVEIFY e accedere con la tua email e password. Questa pagina non conserva la tua sessione.';}
+</script>
+</body></html>

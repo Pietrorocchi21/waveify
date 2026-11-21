@@ -218,6 +218,16 @@
     "dailyMixesSubtitle": "Playlists novas e atualizadas em torno dos seus artistas e gêneros favoritos"
   },
   "library": {
+    "import_audio": "Importar áudio",
+    "files_imported": "{count} arquivos importados",
+    "on_device": "Neste dispositivo",
+    "local_empty": "Nenhum áudio neste dispositivo",
+    "local_hint": "Importe arquivos de áudio para começar a ouvir.",
+    "cloud": "Nuvem",
+    "cloud_empty": "Nenhum áudio na sua biblioteca na nuvem",
+    "upload_cloud": "Enviar para a nuvem",
+    "uploaded_cloud": "Enviado para a nuvem",
+    "your_music": "Sua música",
     "title": "Biblioteca",
     "liked_songs": "Músicas curtidas",
     "song": "música",
@@ -249,6 +259,7 @@
     "remove_from_liked": "Remover dos favoritos"
   },
   "login": {
+    "continue_local": "Continuar sem uma conta",
     "welcome_back": "Bem-vindo de volta",
     "sign_in_to_account": "Entre na sua conta",
     "auth_title_login": "Sua música, do seu jeito",
@@ -354,19 +365,20 @@
       "account_created": "Conta criada!",
       "logged_in": "Conectado!"
     },
-    "no_account_action": "Criar uma conta"
+    "no_account_action": "Criar uma conta",
+    "confirm_email_pending": "Verifique seu e-mail para confirmar o cadastro e depois entre."
   },
   "player": {
     "repeat_off": "Repetir: desativado",
     "repeat_all": "Repetir: tudo",
     "repeat_one": "Repetir: faixa",
+    "open_player": "Abrir o player",
     "nothing_playing": "Não há nada tocando",
     "choose_track": "Escolha uma faixa na pesquisa",
     "queue": "Fila",
     "lyrics": "Letra",
     "volume": "Volume",
     "previous": "Anterior",
-    "open_player": "Abrir o player",
     "next": "Próxima",
     "repeat": "Repetir",
     "lyrics_upgraded": "Letras aprimoradas!",
@@ -413,7 +425,9 @@
     "reverb_hint": "Espaço atmosférico e profundidade ambiente",
     "reverb_amount": "Reverb",
     "reorder_queue": "Reordenar a fila",
-    "lyrics_offset_hint": "Um valor negativo adianta a letra"
+    "lyrics_offset_hint": "Um valor negativo adianta a letra",
+    "lyrics_instrumental": "Instrumental track",
+    "lyrics_unsynced": "Timed lyrics are unavailable for this recording."
   },
   "playlist": {
     "playlist": "Playlist",
@@ -445,9 +459,28 @@
     "albums": "Álbuns",
     "playlists": "Playlists",
     "no_results": "Nenhum resultado encontrado",
-    "type_to_search": "Digite para pesquisar"
+    "type_to_search": "Digite para pesquisar",
+    "online": "Online · Audius",
+    "library": "My library",
+    "online_prompt": "Search music to stream online"
   },
   "settings": {
+    "updater": {
+      "unsupported": "Automatic updates are not supported on this platform.",
+      "check": "Check for updates",
+      "available": "Update available",
+      "available_version": "Version {version} available",
+      "up_to_date": "You are up to date",
+      "error": "Update check failed.",
+      "checking": "Checking for updates…",
+      "downloading": "Downloading update",
+      "ready": "Update verified and ready. Your library and settings will be kept.",
+      "installing": "Installing update and restarting…",
+      "install": "Install update",
+      "download": "Download update",
+      "restart_install": "Restart and install",
+      "releases": "Open releases"
+    },
     "title": "Configurações",
     "search_placeholder": "Pesquisar configurações...",
     "subtitle": "Gerencie suas preferências",
@@ -614,7 +647,8 @@
         "ready": "Pronto",
         "waiting": "Aguardando o Discord",
         "disabled": "Desativado"
-      }
+      },
+      "unsupported": "Discord Rich Presence is unavailable on this platform."
     },
     "customization": {
       "description": "Papel de parede da janela, transparência e efeitos de desfoque nos blocos.",

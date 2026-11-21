@@ -1,0 +1,50 @@
+name: Verify published Windows update
+on:
+  push:
+    branches: ['feat/windows/functional-release']
+    paths: ['.github/workflows/verify-update-release.yml']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag to verify
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Download published installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory release | Out-Null
+          gh release download "$env:RELEASE_TAG" --repo '${{ github.repository }}' --pattern '*-windows.exe' --dir release
+          if ($LASTEXITCODE -ne 0) { throw 'Published installer download failed' }
+      - name: Install and validate the real update feed
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem release -Filter '*.exe' | Select-Object -First 1
+          $app = Join-Path $env:RUNNER_TEMP 'Waveify-release-check'
+          $install = Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$app`"" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw 'Released installer failed' }
+          $report = Join-Path (Resolve-Path release).Path 'update-feed.json'
+          try {
+            $process = Start-Process (Join-Path $app 'waveify.exe') -ArgumentList '--update-feed-self-test', "--self-test-output=$report" -PassThru
+            if (-not $process.WaitForExit(180000)) { Stop-Process $process.Id -Force; throw 'Update feed check timed out' }
+            if ($process.ExitCode -ne 0) { throw "Published update check failed: $(Get-Content $report -Raw)" }
+          } finally {
+            $uninstall = Join-Path $app 'unins000.exe'
+            if (Test-Path $uninstall) { Start-Process $uninstall -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait }
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-update-feed-verification
+          path: release/*.json
+          if-no-files-found: warn

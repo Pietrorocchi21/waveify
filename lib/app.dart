@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+import 'core/i18n/translator.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/providers/app_providers.dart';
@@ -21,18 +25,8 @@ class WaveifyApp extends ConsumerWidget {
       theme: AppTheme.light(settings.accentVariant),
       darkTheme: AppTheme.dark(settings.accentVariant),
       locale: Locale(settings.locale),
-      supportedLocales: const [
-        Locale('en'),
-        Locale('ru'),
-        Locale('uk'),
-        Locale('es'),
-        Locale('de'),
-        Locale('it'),
-        Locale('fr'),
-        Locale('pl'),
-        Locale('tr'),
-        Locale('pt'),
-      ],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      supportedLocales: [for (final code in supportedLocales) Locale(code)],
     );
   }
 }

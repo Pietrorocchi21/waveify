@@ -93,3 +93,10 @@ supabase/.temp/
 .history
 .swiftpm/
 .migrate_working_dir/
+
+# Per-device public cloud connection settings (passed with --dart-define-from-file).
+/config.cloud.json
+
+# Private backend exports (encrypted archives are still user data).
+/backups/
+*.wfy

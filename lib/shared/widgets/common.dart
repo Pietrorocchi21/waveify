@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +15,7 @@ class CoverImage extends StatefulWidget {
     this.width,
     this.height,
     this.borderRadius = 8,
+    this.decodeWidth,
     this.fit = BoxFit.cover,
   });
 
@@ -21,6 +24,7 @@ class CoverImage extends StatefulWidget {
   final double? width;
   final double? height;
   final double borderRadius;
+  final int? decodeWidth;
   final BoxFit fit;
 
   @override
@@ -38,14 +42,33 @@ class _CoverImageState extends State<CoverImage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final placeholder = Container(
-      width: widget.width,
-      height: widget.height,
-      color: theme.colorScheme.surfaceContainerHighest,
+      width: widget.width ?? widget.size,
+      height: widget.height ?? widget.size,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.alphaBlend(
+              theme.colorScheme.primary.withValues(alpha: 0.14),
+              theme.colorScheme.surfaceContainerHighest,
+            ),
+            theme.colorScheme.surfaceContainerHighest,
+          ],
+        ),
+      ),
       alignment: Alignment.center,
-      child: Icon(
-        Icons.music_note_rounded,
-        color: theme.textTertiary,
-        size: (widget.size ?? 48) * 0.4,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : 48.0;
+          return Icon(
+            Icons.music_note_rounded,
+            color: theme.textTertiary,
+            size: (width * 0.25).clamp(16, 72),
+          );
+        },
       ),
     );
 
@@ -53,29 +76,46 @@ class _CoverImageState extends State<CoverImage> {
       return ClipRRect(
         borderRadius: BorderRadius.circular(widget.borderRadius),
         child: SizedBox(
-          width: widget.width,
-          height: widget.height,
+          width: widget.width ?? widget.size,
+          height: widget.height ?? widget.size,
           child: placeholder,
         ),
       );
     }
 
+    final uri = Uri.tryParse(widget.url);
+    if (uri?.scheme == 'file') {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(widget.borderRadius),
+        child: Image.file(
+          File.fromUri(uri!),
+          width: widget.width ?? widget.size,
+          height: widget.height ?? widget.size,
+          fit: widget.fit,
+          cacheWidth: widget.decodeWidth,
+          errorBuilder: (context, error, stack) => placeholder,
+        ),
+      );
+    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(widget.borderRadius),
       child: CachedNetworkImage(
         imageUrl: widget.url,
-        width: widget.width,
-        height: widget.height,
+        memCacheWidth: widget.decodeWidth,
+        width: widget.width ?? widget.size,
+        height: widget.height ?? widget.size,
         fit: widget.fit,
-        fadeInDuration: const Duration(milliseconds: 180),
+        fadeInDuration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
         placeholder: (_, _) => SizedBox(
-          width: widget.width,
-          height: widget.height,
+          width: widget.width ?? widget.size,
+          height: widget.height ?? widget.size,
           child: placeholder,
         ),
         errorWidget: (_, _, _) => SizedBox(
-          width: widget.width,
-          height: widget.height,
+          width: widget.width ?? widget.size,
+          height: widget.height ?? widget.size,
           child: placeholder,
         ),
       ),
@@ -157,7 +197,7 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -278,9 +318,7 @@ void showAppSnackBar(
         content: Text(message),
         backgroundColor: isError ? theme(context).colorScheme.error : null,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
 }

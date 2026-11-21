@@ -62,30 +62,38 @@ class LibraryState {
 
 /// Loads and mutates the user's library.
 class LibraryController extends Notifier<LibraryState> {
+  int _generation = 0;
+
   @override
   LibraryState build() {
-    // The library is bound to the account: it is (re)loaded as soon as the
-    // user signs in, so the like state is correct everywhere and not only
-    // on the library page.
-    ref.listen<AuthState>(authControllerProvider, (previous, next) {
-      if (!next.isAuthenticated) return;
-      if (previous?.isAuthenticated == true) return;
-      loadLikedTracks();
-      loadPlaylists();
-      loadSavedCollections();
-    });
-
+    final account = ref.watch(
+      authControllerProvider.select(
+        (auth) => auth.isAuthenticated ? auth.user?.id : null,
+      ),
+    );
+    final generation = ++_generation;
+    ref.onDispose(() => _generation++);
+    if (account != null) {
+      Future.microtask(() {
+        if (generation != _generation) return;
+        loadLikedTracks();
+        loadPlaylists();
+        loadSavedCollections();
+      });
+    }
     return const LibraryState();
   }
 
   /// Loads the first page of liked tracks.
   Future<void> loadLikedTracks({bool refresh = false}) async {
+    final generation = _generation;
     if (state.isLoadingLiked) return;
     if (!refresh && state.likedTracks.isNotEmpty) return;
 
     state = state.copyWith(isLoadingLiked: true, clearError: true);
     try {
       final page = await ref.read(apiProvider).listLikedTracks(limit: 100);
+      if (generation != _generation) return;
       state = state.copyWith(
         likedTracks: page.items.map((e) => e.$1).toList(growable: false),
         likedCursor: page.nextCursor,
@@ -94,12 +102,14 @@ class LibraryController extends Notifier<LibraryState> {
         isLoadingLiked: false,
       );
     } catch (err) {
+      if (generation != _generation) return;
       state = state.copyWith(isLoadingLiked: false, error: '$err');
     }
   }
 
   /// Loads the next page of liked tracks.
   Future<void> loadMoreLikedTracks() async {
+    final generation = _generation;
     final cursor = state.likedCursor;
     if (cursor == null || state.isLoadingLiked) return;
 
@@ -108,6 +118,7 @@ class LibraryController extends Notifier<LibraryState> {
       final page = await ref
           .read(apiProvider)
           .listLikedTracks(limit: 100, cursor: cursor);
+      if (generation != _generation) return;
       state = state.copyWith(
         likedTracks: [...state.likedTracks, ...page.items.map((e) => e.$1)],
         likedCursor: page.nextCursor,
@@ -116,12 +127,14 @@ class LibraryController extends Notifier<LibraryState> {
         isLoadingLiked: false,
       );
     } catch (err) {
+      if (generation != _generation) return;
       state = state.copyWith(isLoadingLiked: false, error: '$err');
     }
   }
 
   /// Loads the saved collections of every type.
   Future<void> loadSavedCollections() async {
+    final generation = _generation;
     final api = ref.read(apiProvider);
     try {
       final results = await Future.wait([
@@ -129,6 +142,7 @@ class LibraryController extends Notifier<LibraryState> {
         api.listSavedCollections('artists'),
         api.listSavedCollections('playlists'),
       ]);
+      if (generation != _generation) return;
       state = state.copyWith(
         savedAlbums: results[0],
         savedArtists: results[1],
@@ -136,23 +150,24 @@ class LibraryController extends Notifier<LibraryState> {
         clearError: true,
       );
     } catch (err) {
+      if (generation != _generation) return;
       state = state.copyWith(error: '$err');
     }
   }
 
   /// Loads the user's own playlists.
   Future<void> loadPlaylists({bool refresh = false}) async {
+    final generation = _generation;
     if (state.isLoadingPlaylists) return;
     if (!refresh && state.playlists.isNotEmpty) return;
 
     state = state.copyWith(isLoadingPlaylists: true);
     try {
       final playlists = await ref.read(apiProvider).listPlaylists();
-      state = state.copyWith(
-        playlists: playlists,
-        isLoadingPlaylists: false,
-      );
+      if (generation != _generation) return;
+      state = state.copyWith(playlists: playlists, isLoadingPlaylists: false);
     } catch (err) {
+      if (generation != _generation) return;
       state = state.copyWith(isLoadingPlaylists: false, error: '$err');
     }
   }
@@ -168,7 +183,9 @@ class LibraryController extends Notifier<LibraryState> {
     } catch (err) {
       if (!wasLiked) {
         state = state.copyWith(
-          likedTracks: state.likedTracks.where((t) => t.id != track.id).toList(),
+          likedTracks: state.likedTracks
+              .where((t) => t.id != track.id)
+              .toList(),
         );
       }
       state = state.copyWith(error: '$err');
@@ -190,6 +207,7 @@ class LibraryController extends Notifier<LibraryState> {
 
   /// Toggles the like state of a track.
   Future<void> toggleLike(Track track) async {
+    if (track.id.startsWith('gallery-demo:')) return;
     if (state.likedTracks.any((t) => t.id == track.id)) {
       await unlikeTrack(track.id);
     } else {
@@ -224,7 +242,9 @@ class LibraryController extends Notifier<LibraryState> {
     bool isPublic = false,
   }) async {
     try {
-      final playlist = await ref.read(apiProvider).createPlaylist(
+      final playlist = await ref
+          .read(apiProvider)
+          .createPlaylist(
             title: title,
             description: description,
             isPublic: isPublic,
@@ -256,10 +276,7 @@ class LibraryController extends Notifier<LibraryState> {
   ///
   /// The bulk endpoint is used, so the whole batch costs one request.
   /// Returns the number of tracks that were added.
-  Future<int> addTracksToPlaylist(
-    String playlistId,
-    List<Track> tracks,
-  ) async {
+  Future<int> addTracksToPlaylist(String playlistId, List<Track> tracks) async {
     if (tracks.isEmpty) return 0;
     try {
       final result = await ref
@@ -273,10 +290,7 @@ class LibraryController extends Notifier<LibraryState> {
   }
 
   /// Removes a track from one of the user's playlists.
-  Future<bool> removeTrackFromPlaylist(
-    String playlistId,
-    String itemId,
-  ) async {
+  Future<bool> removeTrackFromPlaylist(String playlistId, String itemId) async {
     try {
       await ref.read(apiProvider).removePlaylistItem(playlistId, itemId);
       return true;
@@ -292,8 +306,10 @@ class LibraryController extends Notifier<LibraryState> {
     state = state.copyWith(
       playlists: [
         for (final playlist in previous)
-          if (playlist.id == playlistId) playlist.copyWith(title: title)
-          else playlist,
+          if (playlist.id == playlistId)
+            playlist.copyWith(title: title)
+          else
+            playlist,
       ],
     );
     try {

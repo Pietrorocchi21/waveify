@@ -1,3 +1,4 @@
+import '../local/local_library_store.dart';
 import '../media/innertube/innertube_catalog.dart';
 import '../media/innertube/stream_resolver.dart';
 import '../../models/track.dart';
@@ -47,7 +48,7 @@ class MusicSearchResult {
     final normalizedTitle = title.trim().toLowerCase();
     final normalizedArtists = artists.trim().toLowerCase();
     final seconds = durationMs == 0 ? 0 : (durationMs ~/ 1000);
-    return '${normalizedTitle}|${normalizedArtists}|$seconds';
+    return '$normalizedTitle|$normalizedArtists|$seconds';
   }
 
   MusicSearchResult withScore({required int score, required int quality}) {
@@ -84,6 +85,20 @@ abstract class MusicSource {
 /// Local-first client fallback: the app can run without a remote backend, but
 /// every provider integration must still conform to the same contract.
 class LocalMusicSource extends MusicSource {
+  LocalMusicSource({this.store});
+  final LocalLibraryStore? store;
+  MusicSearchResult _result(Track track) => MusicSearchResult(
+    id: track.id,
+    title: track.title,
+    artists: track.artists,
+    providerId: id,
+    sourceKind: kind,
+    coverUrl: track.coverUrl,
+    durationMs: track.durationMs,
+    streamUrl: track.sourceUrl.isEmpty ? null : track.sourceUrl,
+    score: 100,
+    quality: 100,
+  );
   @override
   String get id => 'local';
 
@@ -95,15 +110,35 @@ class LocalMusicSource extends MusicSource {
 
   @override
   Future<List<MusicSearchResult>> search(String query, {int limit = 20}) async {
-    if (query.trim().isEmpty) return const [];
-    return const [];
+    if (query.trim().isEmpty || store == null) return const [];
+    return store!.read(
+      (data) => (data['tracks'] as Map).values
+          .map((raw) => Track.fromJson(Map<String, dynamic>.from(raw as Map)))
+          .where(
+            (track) => '${track.title} ${track.artists}'.toLowerCase().contains(
+              query.trim().toLowerCase(),
+            ),
+          )
+          .take(limit)
+          .map(_result)
+          .toList(),
+    );
   }
 
   @override
-  Future<MusicSearchResult?> resolveTrack(String trackId) async => null;
+  Future<MusicSearchResult?> resolveTrack(String trackId) async {
+    if (store == null) return null;
+    return store!.read((data) {
+      final raw = (data['tracks'] as Map)[trackId];
+      return raw == null
+          ? null
+          : _result(Track.fromJson(Map<String, dynamic>.from(raw as Map)));
+    });
+  }
 
   @override
-  Future<String?> resolveStreamUrl(MusicSearchResult item) async => item.streamUrl;
+  Future<String?> resolveStreamUrl(MusicSearchResult item) async =>
+      item.streamUrl;
 }
 
 /// Remote provider backed by the generic Waveify backend.
@@ -112,7 +147,7 @@ class LocalMusicSource extends MusicSource {
 /// It only exposes a standard provider contract for a server that can resolve
 /// tracks and streams.
 class WaveifyRemoteSource extends MusicSource {
-  WaveifyRemoteSource({required WaveifyApi api}) : _api = api;
+  WaveifyRemoteSource({required this._api});
 
   final WaveifyApi _api;
 
@@ -188,8 +223,8 @@ class WaveifyRemoteSource extends MusicSource {
       return item.streamUrl;
     }
     try {
-      await _api.getTrack(item.id);
-      return null;
+      final stream = await _api.getTrackStream(item.id);
+      return stream['url'] as String?;
     } catch (_) {
       return null;
     }
@@ -202,11 +237,9 @@ class WaveifyRemoteSource extends MusicSource {
 /// YouTube Music client is enabled, this provider will resolve audio using the
 /// existing stream resolver and fallback to the remote backend automatically.
 class YouTubeMusicSource extends MusicSource {
-  YouTubeMusicSource({
-    InnertubeCatalog? catalog,
-    StreamResolver? resolver,
-  })  : _catalog = catalog ?? InnertubeCatalog(),
-        _resolver = resolver ?? StreamResolver();
+  YouTubeMusicSource({InnertubeCatalog? catalog, StreamResolver? resolver})
+    : _catalog = catalog ?? InnertubeCatalog(),
+      _resolver = resolver ?? StreamResolver();
 
   final InnertubeCatalog _catalog;
   final StreamResolver _resolver;
@@ -226,23 +259,30 @@ class YouTubeMusicSource extends MusicSource {
 
     try {
       final items = await _catalog.search(query, type: 'track');
-      return items.take(limit).map((item) {
-        final track = item.track ?? const Track(id: '', title: '');
-        final title = track.title.isEmpty ? item.displayTitle : track.title;
-        final artists = track.artists.isEmpty ? item.displaySubtitle : track.artists;
-        return MusicSearchResult(
-          id: track.id.isEmpty ? item.id : track.id,
-          title: title,
-          artists: artists,
-          providerId: id,
-          sourceKind: kind,
-          coverUrl: track.coverUrl.isEmpty ? (item.cover?.url ?? '') : track.coverUrl,
-          durationMs: track.durationMs,
-          score: 70,
-          quality: 70,
-          explicit: track.explicit ?? item.explicit,
-        );
-      }).toList(growable: false);
+      return items
+          .take(limit)
+          .map((item) {
+            final track = item.track ?? const Track(id: '', title: '');
+            final title = track.title.isEmpty ? item.displayTitle : track.title;
+            final artists = track.artists.isEmpty
+                ? item.displaySubtitle
+                : track.artists;
+            return MusicSearchResult(
+              id: track.id.isEmpty ? item.id : track.id,
+              title: title,
+              artists: artists,
+              providerId: id,
+              sourceKind: kind,
+              coverUrl: track.coverUrl.isEmpty
+                  ? (item.cover?.url ?? '')
+                  : track.coverUrl,
+              durationMs: track.durationMs,
+              score: 70,
+              quality: 70,
+              explicit: track.explicit ?? item.explicit,
+            );
+          })
+          .toList(growable: false);
     } catch (_) {
       return const [];
     }

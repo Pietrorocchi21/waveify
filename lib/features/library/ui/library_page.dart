@@ -1,16 +1,20 @@
+import '../../../core/cloud/cloud_config.dart';
+
+import 'package:waveify/core/theme/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../models/playlist.dart';
+import '../../../models/track.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/glass.dart';
-import '../../../shared/widgets/track_widgets.dart';
 import '../../player/player_controller.dart';
 import '../library_controller.dart';
+import '../device_library.dart';
 
-/// The user'\''s library: liked songs, playlists and saved collections.
+/// The user's library: liked songs, playlists and saved collections.
 class LibraryPage extends ConsumerStatefulWidget {
   const LibraryPage({super.key});
 
@@ -20,7 +24,10 @@ class LibraryPage extends ConsumerStatefulWidget {
 
 class _LibraryPageState extends ConsumerState<LibraryPage>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 4, vsync: this);
+  late final TabController _tabs = TabController(
+    length: CloudConfig.isConfigured ? 6 : 5,
+    vsync: this,
+  );
 
   @override
   void initState() {
@@ -45,91 +52,109 @@ class _LibraryPageState extends ConsumerState<LibraryPage>
     final t = ref.watch(translatorProvider);
     final library = ref.watch(libraryControllerProvider);
 
-    return AmbientBackground(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(DesignTokens.spaceXxl, DesignTokens.spaceXxxl, DesignTokens.spaceXxl, DesignTokens.spaceMd),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  t('\''library.title'\''),
-                  style: DesignTokens.textDisplaySmall.copyWith(
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: DesignTokens.spaceLg),
-                Row(
-                  children: [
-                    GlassButton(
-                      onPressed: () => _createPlaylist(context, t),
-                      variant: GlassButtonVariant.primary,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.add_rounded, size: 18),
-                          const SizedBox(width: DesignTokens.spaceXs),
-                          Text(t('\''library.create_playlist'\'')),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: DesignTokens.spaceSm),
-                    GlassButton(
-                      onPressed: () => Navigator.of(context).pushNamed('\''/import'\''),
-                      variant: GlassButtonVariant.secondary,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.download_rounded, size: 16),
-                          const SizedBox(width: DesignTokens.spaceXs),
-                          Text(t('\''import.title'\'')),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            DesignTokens.spaceXxl,
+            DesignTokens.spaceXxxl,
+            DesignTokens.spaceXxl,
+            DesignTokens.spaceMd,
           ),
-          const SizedBox(height: DesignTokens.spaceMd),
-          _GlassTabBar(
-            controller: _tabs,
-            tabs: [
-              _GlassTab(text: t('\''library.liked_songs'\'')),
-              _GlassTab(text: t('\''library.tab_playlists'\'')),
-              _GlassTab(text: t('\''library.tab_albums'\'')),
-              _GlassTab(text: t('\''library.tab_artists'\'')),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      t('library.title'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: DesignTokens.textDisplaySmall.copyWith(
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  const ImportAudioButton(),
+                ],
+              ),
+              const SizedBox(height: DesignTokens.spaceLg),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  GlassButton(
+                    onPressed: () => _createPlaylist(context, t),
+                    variant: GlassButtonVariant.primary,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.add_rounded, size: 18),
+                        const SizedBox(width: DesignTokens.spaceXs),
+                        Flexible(child: Text(t('library.create_playlist'))),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: DesignTokens.spaceSm),
+                  GlassButton(
+                    onPressed: () => context.push('/import'),
+                    variant: GlassButtonVariant.secondary,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.download_rounded, size: 16),
+                        const SizedBox(width: DesignTokens.spaceXs),
+                        Flexible(child: Text(t('import.title'))),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabs,
-              children: [
-                _LikedSongsTab(library: library, ref: ref),
-                _PlaylistsTab(library: library),
-                _SavedTab(
-                  collections: library.savedAlbums,
-                  emptyIcon: Icons.album_outlined,
-                  emptyTitle: t('\''library.no_albums_title'\''),
-                  emptyDescription: t('\''library.no_albums_desc'\''),
-                  onOpen: (id) => context.push(
-                    '\''/collection?type=album&id='\'',
-                  ),
+        ),
+        const SizedBox(height: DesignTokens.spaceMd),
+        _GlassTabBar(
+          controller: _tabs,
+          tabs: [
+            _GlassTab(text: t('library.on_device')),
+            if (CloudConfig.isConfigured) _GlassTab(text: t('library.cloud')),
+            _GlassTab(text: t('library.liked_songs')),
+            _GlassTab(text: t('library.tab_playlists')),
+            _GlassTab(text: t('library.tab_albums')),
+            _GlassTab(text: t('library.tab_artists')),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabs,
+            children: [
+              const DeviceTracksTab(),
+              if (CloudConfig.isConfigured) const CloudTracksTab(),
+              _LikedSongsTab(library: library, ref: ref),
+              _PlaylistsTab(library: library),
+              _SavedTab(
+                collections: library.savedAlbums,
+                emptyIcon: Icons.album_outlined,
+                emptyTitle: t('library.no_albums_title'),
+                emptyDescription: t('library.no_albums_desc'),
+                onOpen: (id) => context.push(
+                  '/collection?type=album&id=${Uri.encodeComponent(id)}',
                 ),
-                _SavedTab(
-                  collections: library.savedArtists,
-                  emptyIcon: Icons.person_outline_rounded,
-                  emptyTitle: t('\''library.no_artists_title'\''),
-                  emptyDescription: t('\''library.no_artists_desc'\''),
-                  onOpen: (id) =>
-                    context.push('\''/artist?id='\''),
-                ),
-              ],
-            ),
+              ),
+              _SavedTab(
+                collections: library.savedArtists,
+                emptyIcon: Icons.person_outline_rounded,
+                emptyTitle: t('library.no_artists_title'),
+                emptyDescription: t('library.no_artists_desc'),
+                onOpen: (id) =>
+                    context.push('/artist?id=${Uri.encodeComponent(id)}'),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -139,12 +164,15 @@ class _LibraryPageState extends ConsumerState<LibraryPage>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: theme(context).colorScheme.surfaceContainer,
-        title: Text(t('\''library.create_playlist'\''), style: theme(context).textTheme.titleMedium),
+        title: Text(
+          t('library.create_playlist'),
+          style: theme(context).textTheme.titleMedium,
+        ),
         content: TextField(
           controller: controller,
           autofocus: true,
           decoration: InputDecoration(
-            labelText: t('\''playlist.untitled_playlist'\''),
+            labelText: t('playlist.untitled_playlist'),
             border: const OutlineInputBorder(),
           ),
           onSubmitted: (_) => Navigator.of(context).pop(true),
@@ -152,11 +180,11 @@ class _LibraryPageState extends ConsumerState<LibraryPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(t('\''common.cancel'\'')),
+            child: Text(t('common.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(t('\''common.create'\'')),
+            child: Text(t('common.create')),
           ),
         ],
       ),
@@ -185,13 +213,15 @@ class _GlassTabBar extends StatelessWidget implements PreferredSizeWidget {
       blur: DesignTokens.glassBlurStrong,
       dim: DesignTokens.glassDimStrong,
       borderRadius: 0,
-      padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spaceMd, vertical: DesignTokens.spaceSm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DesignTokens.spaceMd,
+        vertical: DesignTokens.spaceSm,
+      ),
       child: TabBar(
         controller: controller,
         isScrollable: true,
         tabAlignment: TabAlignment.start,
         tabs: tabs,
-        backgroundColor: Colors.transparent,
         indicator: const BoxDecoration(),
         dividerColor: Colors.transparent,
         indicatorSize: TabBarIndicatorSize.tab,
@@ -233,24 +263,27 @@ class _LikedSongsTab extends ConsumerWidget {
     if (library.likedTracks.isEmpty) {
       return EmptyState(
         icon: Icons.favorite_border_rounded,
-        title: t('\''library.liked_songs'\''),
-        description: t('\''library.no_albums_desc'\''),
+        title: t('library.liked_songs'),
+        description: t('library.no_albums_desc'),
       );
     }
 
     return ListView.separated(
       padding: const EdgeInsets.all(DesignTokens.spaceXxl),
-      separatorBuilder: (_, __) => const SizedBox(height: DesignTokens.spaceMd),
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: DesignTokens.spaceMd),
       itemCount: library.likedTracks.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
-          return Row(
+          return Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               GlassButton(
                 onPressed: () => controller.playTrack(
                   library.likedTracks.first,
                   queue: library.likedTracks,
-                  context: '\''library:liked'\'',
+                  context: 'library:liked',
                 ),
                 variant: GlassButtonVariant.primary,
                 child: Row(
@@ -258,7 +291,7 @@ class _LikedSongsTab extends ConsumerWidget {
                   children: [
                     const Icon(Icons.play_arrow_rounded, size: 18),
                     const SizedBox(width: DesignTokens.spaceXs),
-                    Text(t('\''common.play_all'\'')),
+                    Flexible(child: Text(t('common.play_all'))),
                   ],
                 ),
               ),
@@ -266,7 +299,7 @@ class _LikedSongsTab extends ConsumerWidget {
               GlassButton(
                 onPressed: () => controller.playShuffled(
                   library.likedTracks,
-                  context: '\''library:liked'\'',
+                  context: 'library:liked',
                 ),
                 variant: GlassButtonVariant.secondary,
                 child: Row(
@@ -274,7 +307,7 @@ class _LikedSongsTab extends ConsumerWidget {
                   children: [
                     const Icon(Icons.shuffle_rounded, size: 18),
                     const SizedBox(width: DesignTokens.spaceXs),
-                    Text(t('\''common.shuffle'\'')),
+                    Flexible(child: Text(t('common.shuffle'))),
                   ],
                 ),
               ),
@@ -285,7 +318,7 @@ class _LikedSongsTab extends ConsumerWidget {
         return _GlassTrackRow(
           track: track,
           queue: library.likedTracks,
-          context: '\''library:liked'\'',
+          context_: 'library:liked',
           index: index - 1,
         );
       },
@@ -297,13 +330,13 @@ class _GlassTrackRow extends ConsumerWidget {
   const _GlassTrackRow({
     required this.track,
     required this.queue,
-    required this.context,
+    required this.context_,
     required this.index,
   });
 
   final Track track;
   final List<Track> queue;
-  final String context;
+  final String context_;
   final int index;
 
   @override
@@ -316,7 +349,7 @@ class _GlassTrackRow extends ConsumerWidget {
       onTap: () => controller.playTrack(
         track,
         queue: queue,
-        context: context,
+        context: context_,
         index: index,
       ),
       child: Row(
@@ -326,7 +359,7 @@ class _GlassTrackRow extends ConsumerWidget {
             size: 48,
             borderRadius: DesignTokens.radiusSm,
             showGlow: true,
-            accentColor: track.albumColor ?? theme.colorScheme.primary,
+            accentColor: theme.colorScheme.primary,
           ),
           const SizedBox(width: DesignTokens.spaceMd),
           Expanded(
@@ -360,7 +393,7 @@ class _GlassTrackRow extends ConsumerWidget {
             onPressed: () => controller.playTrack(
               track,
               queue: queue,
-              context: context,
+              context: context_,
               index: index,
             ),
             size: 36,
@@ -381,7 +414,6 @@ class _PlaylistsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translatorProvider);
-    final theme = Theme.of(context);
 
     if (library.isLoadingPlaylists && library.playlists.isEmpty) {
       return const LoadingState();
@@ -389,14 +421,15 @@ class _PlaylistsTab extends ConsumerWidget {
     if (library.playlists.isEmpty) {
       return EmptyState(
         icon: Icons.queue_music_rounded,
-        title: t('\''library.no_playlists_title'\''),
-        description: t('\''library.no_playlists_desc'\''),
+        title: t('library.no_playlists_title'),
+        description: t('library.no_playlists_desc'),
       );
     }
 
     return ListView.separated(
       padding: const EdgeInsets.all(DesignTokens.spaceXxl),
-      separatorBuilder: (_, __) => const SizedBox(height: DesignTokens.spaceMd),
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: DesignTokens.spaceMd),
       itemCount: library.playlists.length,
       itemBuilder: (context, index) {
         final playlist = library.playlists[index];
@@ -406,7 +439,7 @@ class _PlaylistsTab extends ConsumerWidget {
               .read(libraryControllerProvider.notifier)
               .deletePlaylist(playlist.id),
           onOpen: () => context.push(
-            '\''/library/playlist?id='\'',
+            '/library/playlist?id=${Uri.encodeComponent(playlist.id)}',
           ),
         );
       },
@@ -421,7 +454,7 @@ class _GlassPlaylistItem extends ConsumerWidget {
     required this.onOpen,
   });
 
-  final Playlist playlist;
+  final UserPlaylist playlist;
   final VoidCallback onDelete;
   final VoidCallback onOpen;
 
@@ -436,11 +469,10 @@ class _GlassPlaylistItem extends ConsumerWidget {
       child: Row(
         children: [
           GlassCover(
-            url: playlist.coverUrl,
+            url: '',
             size: 48,
             borderRadius: DesignTokens.radiusSm,
             showGlow: true,
-            accentColor: playlist.albumColor,
           ),
           const SizedBox(width: DesignTokens.spaceMd),
           Expanded(
@@ -457,7 +489,8 @@ class _GlassPlaylistItem extends ConsumerWidget {
                     color: theme.colorScheme.onSurface,
                   ),
                 ),
-                if (playlist.description != null && playlist.description!.isNotEmpty) ...[
+                if (playlist.description != null &&
+                    playlist.description!.isNotEmpty) ...[
                   const SizedBox(height: DesignTokens.spaceXxs),
                   Text(
                     playlist.description!,
@@ -473,13 +506,10 @@ class _GlassPlaylistItem extends ConsumerWidget {
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == '\''delete'\'') onDelete();
+              if (value == 'delete') onDelete();
             },
             itemBuilder: (context) => [
-              PopupMenuItem(
-                value: '\''delete'\'',
-                child: Text(t('\''common.delete'\'')),
-              ),
+              PopupMenuItem(value: 'delete', child: Text(t('common.delete'))),
             ],
             icon: const Icon(Icons.more_vert_rounded, size: 20),
             color: theme.colorScheme.onSurfaceVariant,
@@ -517,7 +547,8 @@ class _SavedTab extends ConsumerWidget {
 
     return ListView.separated(
       padding: const EdgeInsets.all(DesignTokens.spaceXxl),
-      separatorBuilder: (_, __) => const SizedBox(height: DesignTokens.spaceMd),
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: DesignTokens.spaceMd),
       itemCount: collections.length,
       itemBuilder: (context, index) {
         final item = collections[index];
@@ -531,7 +562,6 @@ class _SavedTab extends ConsumerWidget {
                 size: 44,
                 borderRadius: DesignTokens.radiusMd,
                 showGlow: true,
-                accentColor: item.albumColor,
               ),
               const SizedBox(width: DesignTokens.spaceMd),
               Expanded(

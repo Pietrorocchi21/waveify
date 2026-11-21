@@ -60,7 +60,9 @@ class PlayerController extends Notifier<PlayerState> {
     _handler.onSkipNext = () async => skipNext();
     _handler.onSkipPrevious = () async => skipPrevious();
 
-    _handler.playbackState.listen(_onPlaybackState);
+    final playbackSubscription = _handler.playbackState.listen(
+      _onPlaybackState,
+    );
 
     final settings = ref.read(settingsProvider);
     _telemetry.volume = settings.volume;
@@ -70,6 +72,12 @@ class PlayerController extends Notifier<PlayerState> {
 
     // The commands of the other device are applied as soon as they arrive.
     ref.listen<RemoteState>(remoteControllerProvider, (previous, next) {
+      if (previous?.isAuthenticated != true && next.isAuthenticated) {
+        Future<void>.microtask(() {
+          _lastRemotePublish = DateTime.fromMillisecondsSinceEpoch(0);
+          _publishRemoteState();
+        });
+      }
       final commandId = next.remote?.commandId;
       if (commandId == null || commandId == _lastRemoteCommandId) return;
       _lastRemoteCommandId = commandId;
@@ -77,6 +85,7 @@ class PlayerController extends Notifier<PlayerState> {
     });
 
     ref.onDispose(() {
+      unawaited(playbackSubscription.cancel());
       _radioAppendTimer?.cancel();
       _handler.onTrackEnded = null;
     });
@@ -107,13 +116,14 @@ class PlayerController extends Notifier<PlayerState> {
     bool preserveQueue = false,
   }) async {
     final nextQueue = _normalizeQueue(queue ?? [track], track);
-    final nextIndex = index ??
-        max(0, nextQueue.indexWhere((t) => t.id == track.id));
+    final nextIndex =
+        index ?? max(0, nextQueue.indexWhere((t) => t.id == track.id));
 
     _sessionId += 1;
     _radioWaveId = _newRadioWaveId();
 
-    final isSelectingFromCurrentQueue = preserveQueue ||
+    final isSelectingFromCurrentQueue =
+        preserveQueue ||
         (index != null &&
             state.queue.isNotEmpty &&
             state.queue.length == nextQueue.length &&
@@ -143,8 +153,9 @@ class PlayerController extends Notifier<PlayerState> {
       state = state.copyWith(playbackContextCover: contextCover);
     }
 
-    final selected =
-        finalIndex >= 0 && finalIndex < finalQueue.length ? finalQueue[finalIndex] : track;
+    final selected = finalIndex >= 0 && finalIndex < finalQueue.length
+        ? finalQueue[finalIndex]
+        : track;
 
     state = state.copyWith(
       queue: finalQueue,
@@ -158,7 +169,12 @@ class PlayerController extends Notifier<PlayerState> {
 
     await _loadAndPlay(selected);
 
-    _maybeExtendQueue(_sessionId, state.currentTrack!.id, finalIndex, finalQueue.length);
+    _maybeExtendQueue(
+      _sessionId,
+      state.currentTrack!.id,
+      finalIndex,
+      finalQueue.length,
+    );
   }
 
   /// Plays the whole list in random order.
@@ -170,7 +186,8 @@ class PlayerController extends Notifier<PlayerState> {
   }) async {
     if (tracks.isEmpty) return;
 
-    final seedIndex = (startIndex != null && startIndex >= 0 && startIndex < tracks.length)
+    final seedIndex =
+        (startIndex != null && startIndex >= 0 && startIndex < tracks.length)
         ? startIndex
         : _random.nextInt(tracks.length);
     final seed = tracks[seedIndex];
@@ -230,11 +247,9 @@ class PlayerController extends Notifier<PlayerState> {
     await _loadAndPlay(track);
 
     try {
-      final response = await ref.read(catalogProvider).getRadio(
-            track.id,
-            k: 20,
-            waveId: waveId,
-          );
+      final response = await ref
+          .read(catalogProvider)
+          .getRadio(track.id, k: 20, waveId: waveId);
       final additions = response.items
           .where((t) => t.id != track.id)
           .toList(growable: false);
@@ -251,11 +266,31 @@ class PlayerController extends Notifier<PlayerState> {
     }
   }
 
-  Future<void> _loadAndPlay(Track track, {Duration? initialPosition}) async {
-    _telemetry.startTrack(track, state.playbackContext);
+  Future<void> _loadAndPlay(
+    Track track, {
+    Duration? initialPosition,
+    bool skipOnError = false,
+  }) async {
+    if (track.id.startsWith('gallery-demo:')) {
+      _telemetry.flush();
+    } else {
+      _telemetry.startTrack(track, state.playbackContext);
+    }
+    final session = _sessionId;
+    bool isCurrent() =>
+        session == _sessionId && state.currentTrack?.id == track.id;
 
+    var openingAudio = false;
     try {
-      final stream = await _resolveStream(track);
+      final stream = await _resolveStream(track)
+          .timeout(const Duration(seconds: 25));
+      if (!isCurrent()) return;
+      openingAudio = true;
+      state = state.copyWith(
+        backdropVideoUrl: stream.videoUrl,
+        backdropVideoHeaders: stream.headers,
+        clearBackdropVideo: stream.videoUrl == null,
+      );
       final mediaItem = MediaItem(
         id: track.id,
         title: track.title,
@@ -269,22 +304,48 @@ class PlayerController extends Notifier<PlayerState> {
       final speed = state.keepSpeedAcrossTracks ? state.playbackRate : 1.0;
       final pitch = state.keepSpeedAcrossTracks ? state.pitchSemitones : 0.0;
 
-      await _handler.loadAndPlay(
-        url: stream.url,
-        mediaItem: mediaItem,
-        initialPosition: initialPosition,
-        speed: speed,
-        pitch: _semitoneMultiplier(pitch),
-      );
+      final sources = [stream.url, ...stream.alternateUrls];
+      for (var index = 0; index < sources.length; index++) {
+        if (!isCurrent()) return;
+        try {
+          await _handler.loadAndPlay(
+            url: sources[index],
+            headers: stream.headers,
+            mediaItem: mediaItem,
+            initialPosition: initialPosition,
+            speed: speed,
+            pitch: _semitoneMultiplier(pitch),
+          );
+          break;
+        } catch (_) {
+          if (!isCurrent()) return;
+          if (index == sources.length - 1) rethrow;
+          state = state.copyWith(
+            status: PlayerStatus.loading,
+            clearError: true,
+          );
+        }
+      }
     } catch (err) {
-      await _handlePlaybackError(track.id, '$err');
+      if (!isCurrent()) return;
+      final stage = openingAudio ? 'Audio player' : 'Stream resolver';
+      final message = err is InnertubeException
+          ? err.toString()
+          : '$stage: ${err.runtimeType}';
+      if (skipOnError) {
+        await _handlePlaybackError(track.id, message);
+      } else if (state.currentTrack?.id == track.id) {
+        state = state.copyWith(status: PlayerStatus.error, error: message);
+        unawaited(_handler.pause().catchError((Object _) {}));
+      }
     }
   }
 
   Future<ResolvedAudioStream> _resolveStream(Track track) async {
     // A downloaded track is played from the local file.
-    final local =
-        await ref.read(downloadsControllerProvider.notifier).localFile(track.id);
+    final local = await ref
+        .read(downloadsControllerProvider.notifier)
+        .localFile(track.id);
     if (local != null && local.exists) {
       return ResolvedAudioStream.local(
         local.filePath,
@@ -292,47 +353,30 @@ class PlayerController extends Notifier<PlayerState> {
       );
     }
 
-    // Prefer the aggregated repository: it resolves the best source first and
-    // can fall back across remote providers without tying the player to one
-    // catalog implementation.
-    final searchResults = await _musicRepository.search(track.title, limit: 20);
-    for (final item in searchResults) {
-      if (item.id == track.id ||
-          (item.title.toLowerCase() == track.title.toLowerCase() &&
-              item.artists.toLowerCase() == track.artists.toLowerCase())) {
-        final streamUrl = await _musicRepository.resolveStreamUrl(item);
-        if (streamUrl != null && streamUrl.isNotEmpty) {
-          return ResolvedAudioStream(
-            url: streamUrl,
-            mimeType: 'audio/mpeg',
-            durationMs: item.durationMs,
-          );
-        }
+    if (StreamResolver.toVideoId(track.id) != null ||
+        track.id.startsWith('audius:') ||
+        track.sourceUrl.isNotEmpty ||
+        track.id.startsWith('https://') ||
+        track.id.startsWith('http://') ||
+        track.id.startsWith('file:')) {
+      return _resolver.resolveTrackStream(track);
+    }
+    final candidate = await _musicRepository.resolveBestCandidate(track.id);
+    if (candidate != null) {
+      final url = await _musicRepository.resolveStreamUrl(candidate);
+      if (url != null && url.isNotEmpty) {
+        return _resolver.resolveDirectAudioStream(url);
       }
     }
+    // The backend can return an expiring URL and the required request headers.
+    return _resolver.resolveTrackStream(track);
+  }
 
-    // A track id that is already a YouTube video id resolves directly.
-    final videoId = StreamResolver.toVideoId(track.id);
-    if (videoId != null) {
-      return _resolver.resolveDirectAudioStream(track.id);
-    }
-
-    final resolvedFallback = await _musicRepository.resolveBestCandidate(track.id);
-    if (resolvedFallback != null) {
-      final streamUrl = await _musicRepository.resolveStreamUrl(resolvedFallback);
-      if (streamUrl != null && streamUrl.isNotEmpty) {
-        return ResolvedAudioStream(
-          url: streamUrl,
-          mimeType: 'audio/mpeg',
-          durationMs: resolvedFallback.durationMs,
-        );
-      }
-    }
-
-    throw InnertubeException(
-      'No playable stream for "${track.title}".',
-      404,
-    );
+  /// Finish pending history writes before the update helper closes this process.
+  Future<void> prepareForUpdate() async {
+    await pause();
+    _telemetry.flush(endSession: false);
+    await _telemetry.pendingFlush;
   }
 
   /// The current position of the playback.
@@ -349,7 +393,13 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   Future<void> resume() async {
-    if (state.currentTrack == null) return;
+    final track = state.currentTrack;
+    if (track == null) return;
+    if (state.status == PlayerStatus.error) {
+      state = state.copyWith(status: PlayerStatus.loading, clearError: true);
+      await _loadAndPlay(track);
+      return;
+    }
     state = state.copyWith(status: PlayerStatus.playing, clearError: true);
     await _handler.play();
   }
@@ -366,7 +416,9 @@ class PlayerController extends Notifier<PlayerState> {
   Future<void> skipNext({bool isAutoEnd = false}) async {
     final nextIndex = _computeNextIndex(isAutoEnd: isAutoEnd);
 
-    if (nextIndex == null && state.isRadioContext && state.currentTrack != null) {
+    if (nextIndex == null &&
+        state.isRadioContext &&
+        state.currentTrack != null) {
       final lengthBefore = state.queue.length;
       final waitSession = _sessionId;
       state = state.copyWith(status: PlayerStatus.loading);
@@ -403,7 +455,7 @@ class PlayerController extends Notifier<PlayerState> {
       clearError: true,
     );
 
-    await _loadAndPlay(nextTrack);
+    await _loadAndPlay(nextTrack, skipOnError: isAutoEnd);
     _maybeExtendQueue(_sessionId, nextTrack.id, nextIndex, state.queue.length);
   }
 
@@ -418,8 +470,8 @@ class PlayerController extends Notifier<PlayerState> {
     final prevIndex = state.currentIndex > 0
         ? state.currentIndex - 1
         : (state.repeat == PlaybackRepeatMode.all && !state.isRadioContext
-            ? state.queue.length - 1
-            : 0);
+              ? state.queue.length - 1
+              : 0);
 
     _sessionId += 1;
     if (prevIndex < 0 || prevIndex >= state.queue.length) return;
@@ -441,7 +493,9 @@ class PlayerController extends Notifier<PlayerState> {
     final duration = state.duration;
     final clamped = position < Duration.zero
         ? Duration.zero
-        : (duration > Duration.zero && position > duration ? duration : position);
+        : (duration > Duration.zero && position > duration
+              ? duration
+              : position);
     state = state.copyWith(position: clamped);
     await _handler.seek(clamped);
   }
@@ -460,10 +514,7 @@ class PlayerController extends Notifier<PlayerState> {
       final semitones = double.parse(
         (12 * (log(clamped) / ln2)).toStringAsFixed(1),
       );
-      state = state.copyWith(
-        playbackRate: clamped,
-        pitchSemitones: semitones,
-      );
+      state = state.copyWith(playbackRate: clamped, pitchSemitones: semitones);
     } else {
       state = state.copyWith(playbackRate: clamped);
     }
@@ -476,7 +527,9 @@ class PlayerController extends Notifier<PlayerState> {
 
   /// Sets the pitch offset in semitones, keeping speed linked when configured.
   Future<void> setPitchSemitones(double semitones) async {
-    final clamped = double.parse(semitones.clamp(-12.0, 12.0).toStringAsFixed(1));
+    final clamped = double.parse(
+      semitones.clamp(-12.0, 12.0).toStringAsFixed(1),
+    );
     if (state.isPitchLinked) {
       final rate = double.parse(
         _semitoneMultiplier(clamped).clamp(0.5, 2.0).toStringAsFixed(2),
@@ -521,12 +574,19 @@ class PlayerController extends Notifier<PlayerState> {
 
     if (enabled) {
       _originalUpcomingQueue = [...upcoming];
-      state = state.copyWith(queue: [...played, current, ..._shuffle(upcoming)]);
-    } else {
-      final reference =
-          _masterPlaylist.isNotEmpty ? _masterPlaylist : _originalUpcomingQueue;
       state = state.copyWith(
-        queue: [...played, current, ..._restoreOriginalOrder(upcoming, reference)],
+        queue: [...played, current, ..._shuffle(upcoming)],
+      );
+    } else {
+      final reference = _masterPlaylist.isNotEmpty
+          ? _masterPlaylist
+          : _originalUpcomingQueue;
+      state = state.copyWith(
+        queue: [
+          ...played,
+          current,
+          ..._restoreOriginalOrder(upcoming, reference),
+        ],
       );
       _originalUpcomingQueue = [];
     }
@@ -579,9 +639,11 @@ class PlayerController extends Notifier<PlayerState> {
     var newIndex = state.currentIndex;
     if (state.currentIndex == fromIndex) {
       newIndex = toIndex;
-    } else if (state.currentIndex > fromIndex && toIndex >= state.currentIndex) {
+    } else if (state.currentIndex > fromIndex &&
+        toIndex >= state.currentIndex) {
       newIndex -= 1;
-    } else if (state.currentIndex < fromIndex && toIndex <= state.currentIndex) {
+    } else if (state.currentIndex < fromIndex &&
+        toIndex <= state.currentIndex) {
       newIndex += 1;
     }
 
@@ -607,7 +669,8 @@ class PlayerController extends Notifier<PlayerState> {
     _publishRemoteState();
 
     // The screen is kept awake while the music plays.
-    final keepAwake = playbackState.playing ||
+    final keepAwake =
+        playbackState.playing ||
         playbackState.processingState == AudioProcessingState.loading ||
         playbackState.processingState == AudioProcessingState.buffering;
     if (keepAwake != _keepAwake) {
@@ -615,11 +678,14 @@ class PlayerController extends Notifier<PlayerState> {
       unawaited(WindowService.instance.setKeepAwake(keepAwake));
     }
 
-    if (playbackState.processingState == AudioProcessingState.ready ||
-        playbackState.processingState == AudioProcessingState.buffering) {
-      if (state.status == PlayerStatus.loading) {
-        state = state.copyWith(status: PlayerStatus.playing);
-      }
+    final track = state.currentTrack;
+    if (track != null &&
+        _handler.mediaItem.value?.id == track.id &&
+        playbackState.playing &&
+        playbackState.processingState == AudioProcessingState.ready &&
+        (state.status == PlayerStatus.loading ||
+            state.status == PlayerStatus.error)) {
+      state = state.copyWith(status: PlayerStatus.playing, clearError: true);
     }
     if (playbackState.processingState == AudioProcessingState.error) {
       state = state.copyWith(
@@ -645,7 +711,9 @@ class PlayerController extends Notifier<PlayerState> {
 
     final track = state.currentTrack;
     unawaited(
-      ref.read(remoteControllerProvider.notifier).publish(
+      ref
+          .read(remoteControllerProvider.notifier)
+          .publish(
             trackId: track?.id,
             trackTitle: track?.title,
             trackArtist: track?.artists,
@@ -689,9 +757,7 @@ class PlayerController extends Notifier<PlayerState> {
 
     final track = state.currentTrack;
     if (track == null) {
-      unawaited(
-        service.update(details: null, state: null),
-      );
+      unawaited(service.update(details: null, state: null));
       return;
     }
 
@@ -745,16 +811,21 @@ class PlayerController extends Notifier<PlayerState> {
     }
 
     state = state.copyWith(status: PlayerStatus.error, error: message);
-    await skipNext();
+    await skipNext(isAutoEnd: true);
   }
 
   int? _computeNextIndex({bool isAutoEnd = false}) {
     final size = state.queue.length;
     if (size == 0 || state.currentIndex < 0) return null;
-    if (isAutoEnd && state.repeat == PlaybackRepeatMode.one) return state.currentIndex;
+    if (isAutoEnd && state.repeat == PlaybackRepeatMode.one) {
+      return state.currentIndex;
+    }
     if (state.currentIndex + 1 < size) return state.currentIndex + 1;
     if (state.isRadioContext) return null;
-    if (state.repeat == PlaybackRepeatMode.all || state.repeat == PlaybackRepeatMode.one) return 0;
+    if (state.repeat == PlaybackRepeatMode.all ||
+        state.repeat == PlaybackRepeatMode.one) {
+      return 0;
+    }
     return null;
   }
 
@@ -794,6 +865,7 @@ class PlayerController extends Notifier<PlayerState> {
     int session,
     String seedTrackId,
   ) async {
+    if (seedTrackId.startsWith('gallery-demo:')) return;
     final radio = state.isRadioContext;
     if (!radio && !state.autoplaySimilar) return;
     final startContext = state.playbackContext;
@@ -803,7 +875,9 @@ class PlayerController extends Notifier<PlayerState> {
 
     List<Track> items;
     try {
-      final response = await ref.read(catalogProvider).getRadio(
+      final response = await ref
+          .read(catalogProvider)
+          .getRadio(
             seedTrackId,
             history: historyIds.length > 20
                 ? historyIds.sublist(historyIds.length - 20)
@@ -850,17 +924,20 @@ class PlayerController extends Notifier<PlayerState> {
     return result;
   }
 
-  List<Track> _restoreOriginalOrder(List<Track> upcoming, List<Track> reference) {
+  List<Track> _restoreOriginalOrder(
+    List<Track> upcoming,
+    List<Track> reference,
+  ) {
     if (reference.isEmpty) return upcoming;
     final positions = <String, int>{};
     for (var i = 0; i < reference.length; i++) {
       positions.putIfAbsent(reference[i].id, () => i);
     }
     return [...upcoming]..sort((a, b) {
-        final pa = positions[a.id] ?? 1 << 62;
-        final pb = positions[b.id] ?? 1 << 62;
-        return pa.compareTo(pb);
-      });
+      final pa = positions[a.id] ?? 1 << 62;
+      final pb = positions[b.id] ?? 1 << 62;
+      return pa.compareTo(pb);
+    });
   }
 
   static String _newRadioWaveId() {
@@ -881,6 +958,7 @@ class _TelemetryTracker {
   _TelemetryTracker(this._api);
 
   final WaveifyApi _api;
+  Future<void> pendingFlush = Future.value();
 
   String? _activeTrackId;
   Track? _activeTrack;
@@ -957,13 +1035,16 @@ class _TelemetryTracker {
     if (isRepeatOne) _loopCount += 1;
   }
 
-  void flush() {
+  void flush({bool endSession = true}) {
     if (_activeTrackId == null) return;
     onPausedOrStopped();
 
-    final duration = _trackDurationMs > 0 ? _trackDurationMs : _playedDurationMs;
-    final rawRate =
-        duration > 0 ? _playedDurationMs / duration : (_completed ? 1.0 : 0.0);
+    final duration = _trackDurationMs > 0
+        ? _trackDurationMs
+        : _playedDurationMs;
+    final rawRate = duration > 0
+        ? _playedDurationMs / duration
+        : (_completed ? 1.0 : 0.0);
     final completionRate = rawRate.clamp(0.0, 1.0);
     final skipped = !_completed && _playedDurationMs < 30000;
 
@@ -971,8 +1052,13 @@ class _TelemetryTracker {
       final snapshot = _activeTrack;
       final artists = snapshot?.artistList?.isNotEmpty == true
           ? snapshot!.artistList!
-              .map((a) => {'id': a.id.isEmpty ? 'unknown' : a.id, 'name': a.name})
-              .toList()
+                .map(
+                  (a) => {
+                    'id': a.id.isEmpty ? 'unknown' : a.id,
+                    'name': a.name,
+                  },
+                )
+                .toList()
           : [
               {
                 'id': snapshot?.artistId ?? 'unknown',
@@ -983,35 +1069,49 @@ class _TelemetryTracker {
             ];
 
       final playbackContext = _context;
-      unawaited(_api.recordPlaybackEvent({
-        'playbackSessionId': _playbackSessionId,
-        'listeningSessionId': _getOrCreateListeningSession(),
-        'trackId': _activeTrackId,
-        if (snapshot != null)
-          'trackSnapshot': {
-            'id': snapshot.id,
-            'title': snapshot.title.isEmpty ? 'Unknown Track' : snapshot.title,
-            'artists': artists,
-            if (snapshot.album != null)
-              'album': {
-                'id': snapshot.album!.id,
-                'title': snapshot.album!.title,
-              },
-            if (snapshot.coverUrl.isNotEmpty)
-              'cover': {'url': snapshot.coverUrl, 'width': 512, 'height': 512},
-            'durationMs': snapshot.durationMs,
-          },
-        'playedDurationMs': _playedDurationMs,
-        if (_trackDurationMs > 0) 'trackDurationMs': _trackDurationMs,
-        'completionRate': double.parse(completionRate.toStringAsFixed(4)),
-        'completed': _completed,
-        'skipped': skipped,
-        'loopCount': _loopCount,
-        'hasSeekBackward': _hasSeekBackward,
-        if (playbackContext != null) 'context': _parseContext(playbackContext),
-      }).catchError((Object _) {}));
+      unawaited(
+        pendingFlush = _api
+            .recordPlaybackEvent({
+              'playbackSessionId': _playbackSessionId,
+              'listeningSessionId': _getOrCreateListeningSession(),
+              'trackId': _activeTrackId,
+              if (snapshot != null)
+                'trackSnapshot': {
+                  'id': snapshot.id,
+                  'title': snapshot.title.isEmpty
+                      ? 'Unknown Track'
+                      : snapshot.title,
+                  'artists': artists,
+                  if (snapshot.album != null)
+                    'album': {
+                      'id': snapshot.album!.id,
+                      'title': snapshot.album!.title,
+                    },
+                  if (snapshot.coverUrl.isNotEmpty)
+                    'cover': {
+                      'url': snapshot.coverUrl,
+                      'width': 512,
+                      'height': 512,
+                    },
+                  'durationMs': snapshot.durationMs,
+                  'downloadable': snapshot.downloadable,
+                },
+              'playedDurationMs': _playedDurationMs,
+              if (_trackDurationMs > 0) 'trackDurationMs': _trackDurationMs,
+              'completionRate': double.parse(completionRate.toStringAsFixed(4)),
+              'completed': _completed,
+              'skipped': skipped,
+              'loopCount': _loopCount,
+              'hasSeekBackward': _hasSeekBackward,
+              if (playbackContext != null)
+                'context': _parseContext(playbackContext),
+            })
+            .catchError((Object _) {}),
+      );
     }
 
+    // Keep the session resumable if the installer cannot be launched.
+    if (!endSession) return;
     _activeTrackId = null;
     _activeTrack = null;
     _playbackSessionId = '';
@@ -1049,4 +1149,3 @@ class _TelemetryTracker {
 /// The player controller provider.
 final playerControllerProvider =
     NotifierProvider<PlayerController, PlayerState>(PlayerController.new);
-

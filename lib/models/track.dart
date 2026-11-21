@@ -8,7 +8,9 @@ class TrackArtist {
   factory TrackArtist.fromJson(Object? json) {
     if (json == null) return const TrackArtist(name: '');
     if (json is String) return TrackArtist(name: json);
-    final map = json is Map ? Map<String, dynamic>.from(json) : const <String, dynamic>{};
+    final map = json is Map
+        ? Map<String, dynamic>.from(json)
+        : const <String, dynamic>{};
     return TrackArtist(
       id: asString(map['id'] ?? map['artistId']),
       name: asString(map['name'] ?? map['title']),
@@ -34,7 +36,9 @@ class TrackAlbum {
 
   factory TrackAlbum.fromJson(Object? json) {
     if (json == null) return const TrackAlbum(title: '');
-    final map = json is Map ? Map<String, dynamic>.from(json) : const <String, dynamic>{};
+    final map = json is Map
+        ? Map<String, dynamic>.from(json)
+        : const <String, dynamic>{};
     return TrackAlbum(
       id: asString(map['id']),
       title: asString(map['title'] ?? map['name']),
@@ -66,8 +70,9 @@ class Cover {
   factory Cover.fromJson(Object? json) {
     if (json == null) return const Cover(url: '');
     if (json is String) return Cover(url: json);
-    final map =
-        json is Map ? Map<String, dynamic>.from(json) : const <String, dynamic>{};
+    final map = json is Map
+        ? Map<String, dynamic>.from(json)
+        : const <String, dynamic>{};
     return Cover(
       url: asString(map['url']),
       width: asInt(map['width']),
@@ -82,11 +87,11 @@ class Cover {
   final String? fallbackUrl;
 
   Map<String, dynamic> toJson() => {
-        'url': url,
-        'width': width,
-        'height': height,
-        if (fallbackUrl != null) 'fallbackUrl': fallbackUrl,
-      };
+    'url': url,
+    'width': width,
+    'height': height,
+    if (fallbackUrl != null) 'fallbackUrl': fallbackUrl,
+  };
 }
 
 /// The canonical client-side track.
@@ -101,6 +106,7 @@ class Track {
     this.artistId,
     this.artistList = const [],
     this.coverUrl = '',
+    this.sourceUrl = '',
     this.durationMs = 0,
     this.playCount = 0,
     this.explicit,
@@ -108,6 +114,7 @@ class Track {
     this.album,
     this.playlistItemId,
     this.viewerLiked = false,
+    this.downloadable = true,
   });
 
   /// Normalises the many shapes the API uses for a track into one model.
@@ -134,8 +141,7 @@ class Track {
       } else if (source['artist'] is Map) {
         artistsList = [TrackArtist.fromJson(asRecord(source['artist']))];
       } else if (rawArtists is String && rawArtists.trim().isNotEmpty) {
-        final rawArtistId =
-            asString(source['artistId'] ?? source['artist_id']);
+        final rawArtistId = asString(source['artistId'] ?? source['artist_id']);
         final parts = rawArtists
             .split(',')
             .map((p) => p.trim())
@@ -173,14 +179,16 @@ class Track {
       (a) => a.id.isNotEmpty && a.id != 'unknown',
       orElse: () => const TrackArtist(name: ''),
     );
-    final fallbackArtistId = asString(source['artistId'] ?? source['artist_id']);
+    final fallbackArtistId = asString(
+      source['artistId'] ?? source['artist_id'],
+    );
     final primaryArtistId = knownArtist.id.isNotEmpty
         ? knownArtist.id
         : (fallbackArtistId.isNotEmpty && fallbackArtistId != 'unknown'
-            ? fallbackArtistId
-            : (artistsList.isNotEmpty && artistsList.first.id != 'unknown'
-                ? artistsList.first.id
-                : null));
+              ? fallbackArtistId
+              : (artistsList.isNotEmpty && artistsList.first.id != 'unknown'
+                    ? artistsList.first.id
+                    : null));
 
     final rawCover = source['cover'];
     String coverUrl = '';
@@ -213,6 +221,9 @@ class Track {
       artistId: primaryArtistId,
       artistList: artistsList.isEmpty ? null : artistsList,
       coverUrl: coverUrl,
+      sourceUrl: asString(
+        source['sourceUrl'] ?? source['streamUrl'] ?? source['audioUrl'],
+      ),
       durationMs: asDurationMs(source),
       playCount: asInt(source['playCount']),
       explicit: source['explicit'] == null ? null : asBool(source['explicit']),
@@ -220,6 +231,7 @@ class Track {
       album: album,
       playlistItemId: asStringOrNull(source['playlistItemId']),
       viewerLiked: viewer != null && asBool(viewer['liked']),
+      downloadable: source['downloadable'] != false,
     );
   }
 
@@ -229,6 +241,7 @@ class Track {
   final String? artistId;
   final List<TrackArtist>? artistList;
   final String coverUrl;
+  final String sourceUrl;
   final int durationMs;
   final int playCount;
   final bool? explicit;
@@ -236,20 +249,26 @@ class Track {
   final TrackAlbum? album;
   final String? playlistItemId;
   final bool viewerLiked;
+  final bool downloadable;
 
   /// Snapshot shape sent to the server when liking a track.
   Map<String, dynamic> toSnapshot() => {
-        'id': id,
-        'title': title,
-        'artists': [
-          for (final a in (artistList ?? const <TrackArtist>[]))
-            {'id': a.id.isEmpty ? 'unknown' : a.id, 'name': a.name},
-        ],
-        if (album != null) 'album': {'id': album!.id, 'title': album!.title},
-        if (coverUrl.isNotEmpty)
-          'cover': {'url': coverUrl, 'width': 512, 'height': 512},
-        'durationMs': durationMs,
-      };
+    'id': id,
+    'title': title,
+    if (sourceUrl.isNotEmpty) 'sourceUrl': sourceUrl,
+    'artists': [
+      for (final a
+          in (artistList?.isNotEmpty == true
+              ? artistList!
+              : [TrackArtist(id: artistId ?? '', name: artists)]))
+        {'id': a.id.isEmpty ? 'unknown' : a.id, 'name': a.name},
+    ],
+    if (album != null) 'album': {'id': album!.id, 'title': album!.title},
+    if (coverUrl.isNotEmpty)
+      'cover': {'url': coverUrl, 'width': 512, 'height': 512},
+    'durationMs': durationMs,
+    'downloadable': downloadable,
+  };
 
   Track copyWith({
     String? id,
@@ -258,6 +277,7 @@ class Track {
     String? artistId,
     List<TrackArtist>? artistList,
     String? coverUrl,
+    String? sourceUrl,
     int? durationMs,
     int? playCount,
     bool? explicit,
@@ -265,6 +285,7 @@ class Track {
     TrackAlbum? album,
     String? playlistItemId,
     bool? viewerLiked,
+    bool? downloadable,
   }) {
     return Track(
       id: id ?? this.id,
@@ -273,6 +294,7 @@ class Track {
       artistId: artistId ?? this.artistId,
       artistList: artistList ?? this.artistList,
       coverUrl: coverUrl ?? this.coverUrl,
+      sourceUrl: sourceUrl ?? this.sourceUrl,
       durationMs: durationMs ?? this.durationMs,
       playCount: playCount ?? this.playCount,
       explicit: explicit ?? this.explicit,
@@ -280,6 +302,7 @@ class Track {
       album: album ?? this.album,
       playlistItemId: playlistItemId ?? this.playlistItemId,
       viewerLiked: viewerLiked ?? this.viewerLiked,
+      downloadable: downloadable ?? this.downloadable,
     );
   }
 

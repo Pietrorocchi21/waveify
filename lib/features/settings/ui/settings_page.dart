@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/platform/discord_service.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/platform/updater_service.dart';
+import 'update_panel.dart';
 import '../../../core/providers/app_providers.dart';
-import '../../../shared/widgets/common.dart';
+import '../../../shared/widgets/glass.dart';
 import '../../auth/auth_controller.dart';
 import '../../customization/customization_settings.dart';
 import '../../overlay/overlay_service.dart';
@@ -19,32 +23,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  bool _checking = false;
-  String? _updateMessage;
-
-  Future<void> _checkForUpdate() async {
-    setState(() {
-      _checking = true;
-      _updateMessage = null;
-    });
-
-    final result = await UpdaterService.instance.check();
-    if (!mounted) return;
-
-    final t = ref.read(translatorProvider);
-    setState(() {
-      _checking = false;
-      _updateMessage = switch (result.state) {
-        UpdateState.available => result.version == null
-            ? t('settings.updater.available')
-            : t('settings.updater.available_version', {'version': result.version!}),
-        UpdateState.upToDate => t('settings.updater.up_to_date'),
-        UpdateState.error => '${t('settings.updater.error')} ${result.error ?? ''}',
-        _ => null,
-      };
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -59,7 +37,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       children: [
         Text(
           t('settings.title'),
-          style: theme.textTheme.headlineSmall?.copyWith(
+          style: theme.textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -73,7 +51,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         const SizedBox(height: 24),
 
         _GroupTitle(t('settings.tabs.appearance')),
-        AppPanel(
+        GlassPanel(
+          blur: 0,
           padding: EdgeInsets.zero,
           child: Column(
             children: [
@@ -110,10 +89,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   underline: const SizedBox.shrink(),
                   items: [
                     for (final variant in AccentVariant.values)
-                      DropdownMenuItem(
-                        value: variant,
-                        child: Text(variant.id),
-                      ),
+                      DropdownMenuItem(value: variant, child: Text(variant.id)),
                   ],
                   onChanged: (variant) {
                     if (variant != null) controller.setAccent(variant);
@@ -122,7 +98,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               const Divider(height: 1),
               ListTile(
-                title: const Text('Language'),
+                title: Text(t('settings.language.label')),
                 trailing: DropdownButton<String>(
                   value: settings.locale,
                   underline: const SizedBox.shrink(),
@@ -149,7 +125,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
         const SizedBox(height: 20),
         _GroupTitle(t('settings.tabs.playback')),
-        AppPanel(
+        GlassPanel(
+          blur: 0,
           padding: EdgeInsets.zero,
           child: Column(
             children: [
@@ -169,7 +146,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   '${settings.pitchSemitones.toStringAsFixed(1)} st',
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => Navigator.of(context).pushNamed('/player'),
+                onTap: () => context.push('/player'),
               ),
             ],
           ),
@@ -177,36 +154,50 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
         const SizedBox(height: 20),
         _GroupTitle(t('settings.tabs.discord')),
-        AppPanel(
+        GlassPanel(
+          blur: 0,
           padding: EdgeInsets.zero,
           child: Column(
             children: [
               SwitchListTile(
                 value: settings.discordEnabled,
                 title: Text(t('settings.tabs.discord')),
-                subtitle: Text(t('settings.discord.desc')),
-                onChanged: (value) =>
-                    controller.setDiscordEnabled(value),
+                subtitle: Text(
+                  t(
+                    DiscordService.instance.isSupported
+                        ? 'settings.discord.desc'
+                        : 'settings.discord.unsupported',
+                  ),
+                ),
+                onChanged: DiscordService.instance.isSupported
+                    ? (value) => controller.setDiscordEnabled(value)
+                    : null,
               ),
               const Divider(height: 1),
               SwitchListTile(
                 value: settings.discordShowArtwork,
                 title: Text(t('settings.discord.show_artwork')),
-                onChanged: settings.discordEnabled
+                onChanged:
+                    settings.discordEnabled &&
+                        DiscordService.instance.isSupported
                     ? (value) => controller.setDiscordShowArtwork(value)
                     : null,
               ),
               SwitchListTile(
                 value: settings.discordShowArtistImage,
                 title: Text(t('settings.discord.show_artist_image')),
-                onChanged: settings.discordEnabled
+                onChanged:
+                    settings.discordEnabled &&
+                        DiscordService.instance.isSupported
                     ? (value) => controller.setDiscordShowArtistImage(value)
                     : null,
               ),
               SwitchListTile(
                 value: settings.discordShowTime,
                 title: Text(t('settings.discord.show_time')),
-                onChanged: settings.discordEnabled
+                onChanged:
+                    settings.discordEnabled &&
+                        DiscordService.instance.isSupported
                     ? (value) => controller.setDiscordShowTime(value)
                     : null,
               ),
@@ -220,14 +211,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
         const SizedBox(height: 20),
         _GroupTitle(t('settings.tabs.shortcuts')),
-        AppPanel(
+        GlassPanel(
+          blur: 0,
           padding: EdgeInsets.zero,
           child: Column(
             children: [
               ListTile(
                 leading: const Icon(Icons.keyboard_rounded),
-                title: Text(t('settings.shortcuts.title')),
-                subtitle: Text(t('settings.shortcuts.desc')),
+                title: Text(t('settings.tabs.shortcuts')),
+                subtitle: Text(t('settings.shortcuts.description')),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -245,7 +237,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
         const SizedBox(height: 20),
         _GroupTitle(t('settings.tabs.account')),
-        AppPanel(
+        GlassPanel(
+          blur: 0,
           padding: EdgeInsets.zero,
           child: Column(
             children: [
@@ -269,10 +262,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 onTap: () async {
                   await ref.read(authControllerProvider.notifier).logout();
                   if (context.mounted) {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/login',
-                      (route) => false,
-                    );
+                    context.go('/login');
                   }
                 },
               ),
@@ -282,38 +272,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
         const SizedBox(height: 20),
         _GroupTitle(t('settings.tabs.about')),
-        AppPanel(
+        GlassPanel(
+          blur: 0,
           padding: EdgeInsets.zero,
           child: Column(
             children: [
               ListTile(
                 leading: const Icon(Icons.info_outline_rounded),
                 title: Text(t('common.app.name')),
-                subtitle: Text(t('common.app.version')),
               ),
               const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.system_update_alt_rounded),
-                title: Text(t('settings.updater.check')),
-                trailing: _checking
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : null,
-                onTap: _checking ? null : _checkForUpdate,
-              ),
-              if (_updateMessage != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Text(
-                    _updateMessage!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.textTertiary,
-                    ),
-                  ),
-                ),
+              const UpdatePanel(),
             ],
           ),
         ),
@@ -358,7 +327,8 @@ class _OverlaySettings extends ConsumerWidget {
     final controller = ref.read(settingsProvider.notifier);
     final overlay = ref.watch(overlayServiceProvider);
 
-    return AppPanel(
+    return GlassPanel(
+      blur: 0,
       padding: EdgeInsets.zero,
       child: Column(
         children: [
@@ -366,9 +336,8 @@ class _OverlaySettings extends ConsumerWidget {
             value: overlay.isOpen,
             title: Text(t('settings.overlay.enabled.title')),
             subtitle: Text(t('settings.overlay.enabled.description')),
-            onChanged: (value) => ref
-                .read(overlayServiceProvider.notifier)
-                .toggle(),
+            onChanged: (value) =>
+                ref.read(overlayServiceProvider.notifier).toggle(),
           ),
           ListTile(
             title: Text(t('settings.overlay.position.title')),

@@ -1,3 +1,5 @@
+import '../features/gallery/spatial_gallery_page.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +27,7 @@ class AppRoutes {
 
   static const home = '/';
   static const search = '/search';
+  static const gallery = '/gallery';
   static const library = '/library';
   static const playlist = '/library/playlist';
   static const artist = '/artist';
@@ -44,7 +47,7 @@ class AppRoutes {
 /// The authenticated pages live inside a shell (navigation + mini player);
 /// the detail pages are pushed on top of it.
 final routerProvider = Provider<GoRouter>((ref) {
-  final notifier = ValueNotifier<AuthState>(const AuthState());
+  final notifier = ValueNotifier<AuthState>(ref.read(authControllerProvider));
   ref.onDispose(notifier.dispose);
 
   ref.listen<AuthState>(authControllerProvider, (_, next) {
@@ -75,7 +78,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: AppRoutes.search,
-            builder: (context, state) => const _SearchRoute(),
+            builder: (context, state) =>
+                SearchPage(initialQuery: state.uri.queryParameters['q'] ?? ''),
+          ),
+          GoRoute(
+            path: AppRoutes.gallery,
+            builder: (context, state) => SpatialGalleryPage(
+              artistId: state.uri.queryParameters['artist'],
+            ),
           ),
           GoRoute(
             path: AppRoutes.library,
@@ -94,45 +104,41 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const _ImportRoute(),
           ),
           GoRoute(
+            path: AppRoutes.player,
+            builder: (context, state) => const _PlayerRoute(),
+          ),
+          GoRoute(
             path: AppRoutes.settings,
             builder: (context, state) => const _SettingsRoute(),
           ),
+          GoRoute(
+            path: AppRoutes.playlist,
+            builder: (context, state) =>
+                _PlaylistRoute(id: state.uri.queryParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: AppRoutes.artist,
+            builder: (context, state) =>
+                _ArtistRoute(id: state.uri.queryParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: AppRoutes.collection,
+            builder: (context, state) =>
+                _CollectionRoute(id: state.uri.queryParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: AppRoutes.profile,
+            builder: (context, state) =>
+                _ProfileRoute(userId: state.uri.queryParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: AppRoutes.leaderboard,
+            builder: (context, state) => _LeaderboardRoute(
+              artistId: state.uri.queryParameters['id'],
+              artistName: state.uri.queryParameters['name'],
+            ),
+          ),
         ],
-      ),
-      GoRoute(
-        path: AppRoutes.playlist,
-        builder: (context, state) => _PlaylistRoute(
-          id: state.uri.queryParameters['id'] ?? '',
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.artist,
-        builder: (context, state) => _ArtistRoute(
-          id: state.uri.queryParameters['id'] ?? '',
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.collection,
-        builder: (context, state) => _CollectionRoute(
-          id: state.uri.queryParameters['id'] ?? '',
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.player,
-        builder: (context, state) => const _PlayerRoute(),
-      ),
-      GoRoute(
-        path: AppRoutes.profile,
-        builder: (context, state) => _ProfileRoute(
-          userId: state.uri.queryParameters['id'] ?? '',
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.leaderboard,
-        builder: (context, state) => _LeaderboardRoute(
-          artistId: state.uri.queryParameters['id'],
-          artistName: state.uri.queryParameters['name'],
-        ),
       ),
     ],
   );
@@ -143,13 +149,6 @@ class _HomeRoute extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const HomePage();
-}
-
-class _SearchRoute extends StatelessWidget {
-  const _SearchRoute();
-
-  @override
-  Widget build(BuildContext context) => const SearchPage();
 }
 
 class _LibraryRoute extends StatelessWidget {
@@ -230,15 +229,14 @@ class _LeaderboardRoute extends StatelessWidget {
   final String? artistName;
 
   @override
-  Widget build(BuildContext context) => LeaderboardPage(
-        artistId: artistId,
-        artistName: artistName,
-      );
+  Widget build(BuildContext context) =>
+      LeaderboardPage(artistId: artistId, artistName: artistName);
 }
 
 class _PlayerRoute extends StatelessWidget {
   const _PlayerRoute();
 
   @override
-  Widget build(BuildContext context) => const FullscreenPlayerPage();
+  Widget build(BuildContext context) =>
+      const FullscreenPlayerPage(embedded: true);
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../utils/json.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/customization/customization_controller.dart';
@@ -29,7 +30,7 @@ enum DefaultPlaybackContext { resume, empty }
 /// preferences that live in `customizationStore.ts`.
 class AppSettings {
   const AppSettings({
-    this.themeMode = ThemeMode.system,
+    this.themeMode = ThemeMode.dark,
     this.accentVariant = AccentVariant.defaultVariant,
     this.locale = 'en',
     this.volume = 1,
@@ -57,6 +58,7 @@ class AppSettings {
     this.wallpaperPath,
     this.wallpaperBlur = 0,
     this.wallpaperDim = 0,
+    this.videoBackdrop = true,
     this.sidebarDecoration = const BlockCustomization(),
     this.contentDecoration = const BlockCustomization(),
     this.miniplayerDecoration = const BlockCustomization(),
@@ -96,6 +98,7 @@ class AppSettings {
   final String? wallpaperPath;
   final int wallpaperBlur;
   final int wallpaperDim;
+  final bool videoBackdrop;
   final BlockCustomization sidebarDecoration;
   final BlockCustomization contentDecoration;
   final BlockCustomization miniplayerDecoration;
@@ -108,16 +111,13 @@ class AppSettings {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_key);
       if (raw == null) return const AppSettings();
-      final map = Map<String, dynamic>.from(
-        jsonDecode(raw) as Map,
-      );
+      final map = Map<String, dynamic>.from(jsonDecode(raw) as Map);
       return AppSettings(
         themeMode: ThemeMode.values.firstWhere(
           (m) => m.name == map['themeMode'],
           orElse: () => ThemeMode.system,
         ),
-        accentVariant:
-            AccentVariant.fromId(map['accentVariant'] as String?),
+        accentVariant: AccentVariant.fromId(map['accentVariant'] as String?),
         locale: map['locale'] as String? ?? 'en',
         volume: (map['volume'] as num?)?.toDouble() ?? 1,
         repeat: PlaybackRepeatMode.values.firstWhere(
@@ -157,6 +157,7 @@ class AppSettings {
         wallpaperPath: map['wallpaperPath'] as String?,
         wallpaperBlur: (map['wallpaperBlur'] as num?)?.round() ?? 0,
         wallpaperDim: (map['wallpaperDim'] as num?)?.round() ?? 0,
+        videoBackdrop: map['videoBackdrop'] != false,
         sidebarDecoration: _decodeBlock(map['sidebarDecoration']),
         contentDecoration: _decodeBlock(map['contentDecoration']),
         miniplayerDecoration: _decodeBlock(map['miniplayerDecoration']),
@@ -197,6 +198,7 @@ class AppSettings {
     bool clearWallpaper = false,
     int? wallpaperBlur,
     int? wallpaperDim,
+    bool? videoBackdrop,
     BlockCustomization? sidebarDecoration,
     BlockCustomization? contentDecoration,
     BlockCustomization? miniplayerDecoration,
@@ -219,7 +221,8 @@ class AppSettings {
       playbackRate: playbackRate ?? this.playbackRate,
       pitchSemitones: pitchSemitones ?? this.pitchSemitones,
       isPitchLinked: isPitchLinked ?? this.isPitchLinked,
-      keepSpeedAcrossTracks: keepSpeedAcrossTracks ?? this.keepSpeedAcrossTracks,
+      keepSpeedAcrossTracks:
+          keepSpeedAcrossTracks ?? this.keepSpeedAcrossTracks,
       isReverbEnabled: isReverbEnabled ?? this.isReverbEnabled,
       reverbLevel: reverbLevel ?? this.reverbLevel,
       overlayAlwaysOnTop: overlayAlwaysOnTop ?? this.overlayAlwaysOnTop,
@@ -230,10 +233,12 @@ class AppSettings {
       discordShowArtistImage:
           discordShowArtistImage ?? this.discordShowArtistImage,
       discordShowTime: discordShowTime ?? this.discordShowTime,
-      wallpaperPath:
-          clearWallpaper ? null : (wallpaperPath ?? this.wallpaperPath),
+      wallpaperPath: clearWallpaper
+          ? null
+          : (wallpaperPath ?? this.wallpaperPath),
       wallpaperBlur: wallpaperBlur ?? this.wallpaperBlur,
       wallpaperDim: wallpaperDim ?? this.wallpaperDim,
+      videoBackdrop: videoBackdrop ?? this.videoBackdrop,
       sidebarDecoration: sidebarDecoration ?? this.sidebarDecoration,
       contentDecoration: contentDecoration ?? this.contentDecoration,
       miniplayerDecoration: miniplayerDecoration ?? this.miniplayerDecoration,
@@ -274,6 +279,7 @@ class AppSettings {
           'wallpaperPath': wallpaperPath,
           'wallpaperBlur': wallpaperBlur,
           'wallpaperDim': wallpaperDim,
+          'videoBackdrop': videoBackdrop,
           'sidebarDecoration': _encodeBlock(sidebarDecoration),
           'contentDecoration': _encodeBlock(contentDecoration),
           'miniplayerDecoration': _encodeBlock(miniplayerDecoration),
@@ -283,12 +289,11 @@ class AppSettings {
   }
 }
 
-
 Map<String, dynamic> _encodeBlock(BlockCustomization block) => {
-      'opacity': block.opacity,
-      'blur': block.blur,
-      'dim': block.dim,
-    };
+  'opacity': block.opacity,
+  'blur': block.blur,
+  'dim': block.dim,
+};
 
 BlockCustomization _decodeBlock(Object? raw) {
   final map = asRecord(raw);
@@ -299,4 +304,3 @@ BlockCustomization _decodeBlock(Object? raw) {
     dim: (map['dim'] as num?)?.round() ?? 0,
   );
 }
-

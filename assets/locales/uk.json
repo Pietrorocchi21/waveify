@@ -214,6 +214,16 @@
     "dailyMixesSubtitle": "Свіжі мікси на основі улюблених артистів та жанрів"
   },
   "library": {
+    "import_audio": "Імпорт аудіо",
+    "files_imported": "Імпортовано файлів: {count}",
+    "on_device": "На цьому пристрої",
+    "local_empty": "На цьому пристрої немає аудіо",
+    "local_hint": "Імпортуйте аудіофайли, щоб почати слухати.",
+    "cloud": "Хмара",
+    "cloud_empty": "У хмарній бібліотеці немає аудіо",
+    "upload_cloud": "Завантажити в хмару",
+    "uploaded_cloud": "Завантажено в хмару",
+    "your_music": "Ваша музика",
     "title": "Бібліотека",
     "liked_songs": "Вподобані",
     "song": "пісня",
@@ -245,6 +255,7 @@
     "remove_from_liked": "Вилучити з улюблених"
   },
   "login": {
+    "continue_local": "Продовжити без облікового запису",
     "welcome_back": "З поверненням",
     "sign_in_to_account": "Увійдіть в акаунт",
     "auth_title_login": "Твоя музика чекає",
@@ -350,12 +361,14 @@
     "error_password_required": "Введіть пароль",
     "error_passwords_no_match": "Паролі не збігаються",
     "error_wrong_password": "Невірний пароль",
-    "no_account_action": "Створити обліковий запис"
+    "no_account_action": "Створити обліковий запис",
+    "confirm_email_pending": "Підтвердьте реєстрацію електронною поштою, а потім увійдіть."
   },
   "player": {
     "repeat_off": "Повтор: вимкнено",
     "repeat_all": "Повтор: усе",
     "repeat_one": "Повтор: трек",
+    "open_player": "Відкрити програвач",
     "nothing_playing": "Нічого не грає",
     "choose_track": "Виберіть трек в пошуку",
     "queue": "Черга",
@@ -406,7 +419,9 @@
     "reorder_queue": "Змінити порядок черги",
     "lyrics_offset_hint": "Від'ємне значення зсуває текст раніше",
     "next": "Далі",
-    "previous": "Назад"
+    "previous": "Назад",
+    "lyrics_instrumental": "Instrumental track",
+    "lyrics_unsynced": "Timed lyrics are unavailable for this recording."
   },
   "playlist": {
     "playlist": "Плейліст",
@@ -438,9 +453,28 @@
     "albums": "Альбоми",
     "playlists": "Плейлісти",
     "no_results": "Нічого не знайдено",
-    "type_to_search": "Почніть вводити"
+    "type_to_search": "Почніть вводити",
+    "online": "Online · Audius",
+    "library": "My library",
+    "online_prompt": "Search music to stream online"
   },
   "settings": {
+    "updater": {
+      "unsupported": "Automatic updates are not supported on this platform.",
+      "check": "Check for updates",
+      "available": "Update available",
+      "available_version": "Version {version} available",
+      "up_to_date": "You are up to date",
+      "error": "Update check failed.",
+      "checking": "Checking for updates…",
+      "downloading": "Downloading update",
+      "ready": "Update verified and ready. Your library and settings will be kept.",
+      "installing": "Installing update and restarting…",
+      "install": "Install update",
+      "download": "Download update",
+      "restart_install": "Restart and install",
+      "releases": "Open releases"
+    },
     "title": "Налаштування",
     "search_placeholder": "Пошук налаштувань...",
     "subtitle": "Керуйте своїми налаштуваннями",
@@ -607,7 +641,8 @@
         "ready": "Готово",
         "waiting": "Очікування Discord",
         "disabled": "Вимкнено"
-      }
+      },
+      "unsupported": "Discord Rich Presence is unavailable on this platform."
     },
     "miniplayer": {
       "description": "Поведінка плаваючого мініплеєра, таймлайн та зовнішній вигляд.",

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../player/player_controller.dart';
+import '../player/ui/mini_player.dart';
+import '../player/ui/fullscreen_player_page.dart';
 import 'shortcut_controller.dart';
 import 'shortcut_settings.dart';
 
@@ -11,8 +14,14 @@ import 'shortcut_settings.dart';
 /// Port of the "Main Application" scope of the shortcut system of the
 /// Electron client.
 class ShortcutScope extends ConsumerWidget {
-  const ShortcutScope({super.key, required this.child, this.onToggleQueue,
-      this.onToggleLyrics, this.onToggleFullscreen, this.onSearch});
+  const ShortcutScope({
+    super.key,
+    required this.child,
+    this.onToggleQueue,
+    this.onToggleLyrics,
+    this.onToggleFullscreen,
+    this.onSearch,
+  });
 
   final Widget child;
   final VoidCallback? onToggleQueue;
@@ -32,9 +41,25 @@ class ShortcutScope extends ConsumerWidget {
       bindings[activator] = () => _run(context, ref, player, binding.action);
     }
 
-    return CallbackShortcuts(
-      bindings: bindings,
-      child: Focus(autofocus: true, child: child),
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (_, event) {
+        final focused = FocusManager.instance.primaryFocus?.context;
+        if (focused != null &&
+            (focused.widget is EditableText ||
+                focused.findAncestorWidgetOfExactType<EditableText>() !=
+                    null)) {
+          return KeyEventResult.ignored;
+        }
+        for (final entry in bindings.entries) {
+          if (entry.key.accepts(event, HardwareKeyboard.instance)) {
+            entry.value();
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: child,
     );
   }
 
@@ -52,13 +77,9 @@ class ShortcutScope extends ConsumerWidget {
       case ShortcutAction.prevTrack:
         player.skipPrevious();
       case ShortcutAction.seekForward:
-        player.seek(
-          player.position + const Duration(seconds: 10),
-        );
+        player.seek(player.position + const Duration(seconds: 10));
       case ShortcutAction.seekBackward:
-        player.seek(
-          player.position - const Duration(seconds: 10),
-        );
+        player.seek(player.position - const Duration(seconds: 10));
       case ShortcutAction.volumeUp:
         player.setVolume(player.volume + 0.05);
       case ShortcutAction.volumeDown:
@@ -72,11 +93,23 @@ class ShortcutScope extends ConsumerWidget {
           GoRouter.of(context).go('/search');
         }
       case ShortcutAction.toggleQueue:
-        onToggleQueue?.call();
+        if (onToggleQueue != null) {
+          onToggleQueue!();
+        } else {
+          showQueueSheet(context, ref);
+        }
       case ShortcutAction.toggleLyrics:
-        onToggleLyrics?.call();
+        if (onToggleLyrics != null) {
+          onToggleLyrics!();
+        } else {
+          showLyricsSheet(context);
+        }
       case ShortcutAction.toggleFullscreen:
-        onToggleFullscreen?.call();
+        if (onToggleFullscreen != null) {
+          onToggleFullscreen!();
+        } else {
+          context.push('/player');
+        }
     }
   }
 }

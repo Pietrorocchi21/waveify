@@ -94,3 +94,10 @@ This project is distributed under the MIT license. See `LICENSE` for details.
 ## Privacy and rights
 
 Use only media and playlists you have the legal right to access, play, and redistribute. Waveify does not grant permission to use protected content outside the applicable terms of the source provider or the user’s rights.
+
+## Backend gratuito e portabilità
+
+La [guida backend](docs/backend-portability.md) descrive attivazione, limiti del
+piano gratuito, backup cifrati e trasferimento verso un nuovo progetto. Il workflow
+**Waveify backend** gestisce stato, migrazioni versionate e backup manuali; il
+client continua a funzionare in locale anche senza configurazione cloud.

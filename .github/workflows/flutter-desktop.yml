@@ -2,11 +2,30 @@ name: Build Flutter desktop
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Desktop platforms to build
+        type: choice
+        options: [windows, all]
+        default: windows
+      supabase_url:
+        description: Public Supabase project URL (optional)
+        type: string
+        required: false
+      supabase_publishable_key:
+        description: Public Supabase publishable key (never service_role)
+        type: string
+        required: false
+      ota_baseline_run_id:
+        description: Optional Actions run with the previous Windows installer
+        type: string
+        required: false
   push:
-    branches: [main]
+    branches: [main, master]
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: flutter-desktop-${{ github.ref }}
@@ -20,30 +39,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: linux
-            os: ubuntu-latest
-            target: linux
-          - name: windows
-            os: windows-latest
-            target: windows
-          - name: macos
-            os: macos-latest
-            target: macos
+        include: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.target != 'all' && '[{"name":"windows","os":"windows-latest","target":"windows"}]' || '[{"name":"linux","os":"ubuntu-latest","target":"linux"},{"name":"windows","os":"windows-latest","target":"windows"},{"name":"macos","os":"macos-latest","target":"macos"}]') }}
 
     env:
-      API_URL: ${{ vars.API_URL || 'http://localhost:1337' }}
-      COVERS_PROXY_URL: ${{ vars.COVERS_PROXY_URL || 'https://images.example.com' }}
-      UPDATE_FEED_URL: https://github.com/${{ github.repository }}/releases/latest/download/appcast.xml
+      SUPABASE_URL: ${{ inputs.supabase_url || vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ inputs.supabase_publishable_key || vars.SUPABASE_PUBLISHABLE_KEY }}
+      API_URL: ${{ vars.API_URL }}
+      COVERS_PROXY_URL: ${{ vars.COVERS_PROXY_URL }}
+      UPDATE_MANIFEST_URL: https://github.com/${{ github.repository }}/releases/latest/download/update.json
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: subosito/flutter-action@v2
+        id: flutter_sdk
+        continue-on-error: true
         with:
           channel: stable
           flutter-version: 3.47.9
           cache: true
+
+      - name: Install pinned Flutter from official Git tag when archive is unavailable
+        if: steps.flutter_sdk.outcome == 'failure'
+        shell: bash
+        run: |
+          git clone --depth 1 --branch 3.47.9 https://github.com/flutter/flutter.git "$RUNNER_TEMP/waveify-flutter"
+          echo "$RUNNER_TEMP/waveify-flutter/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/waveify-flutter/bin/flutter" --version
 
       - name: Resolve app version
         id: version
@@ -79,25 +101,123 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      - name: Verify update manifest generation
+        shell: bash
+        run: python3 -m unittest discover -s tests/update -v
+
       - name: Build ${{ matrix.target }}
         shell: bash
         run: |
+          set -o pipefail
+          mkdir -p build/windows-smoke
           flutter build ${{ matrix.target }} --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=API_URL="$API_URL" \
             --dart-define=COVERS_PROXY_URL="$COVERS_PROXY_URL" \
-            --dart-define=UPDATE_FEED_URL="$UPDATE_FEED_URL"
+            --dart-define=APP_VERSION="${{ steps.version.outputs.version }}" \
+            --dart-define=UPDATE_MANIFEST_URL="$UPDATE_MANIFEST_URL" 2>&1 | tee build/windows-smoke/native-build.log
 
-      - name: Generate Windows installer
+      - name: Include Windows C++ runtime
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -property installationPath
+          $crt = Get-ChildItem "$vs\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT" -Directory |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $crt) { throw 'Visual C++ redistributable DLL directory not found' }
+          Copy-Item "$($crt.FullName)\*.dll" build\windows\x64\runner\Release\
+
+      - name: Verify native Windows application
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: ./tool/windows-smoke.ps1
+
+      - name: Generate Windows installer and portable archive
         if: matrix.target == 'windows'
         shell: pwsh
         run: |
           choco install innosetup -y --no-progress
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $iscc)) {
-            throw "ISCC.exe not found at $iscc"
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe not found at $iscc" }
+          & $iscc '/DAppVersion=${{ steps.version.outputs.version }}' windows\installer\waveify.iss
+          if ($LASTEXITCODE -ne 0) { throw "Installer compiler failed: $LASTEXITCODE" }
+          Copy-Item build\windows\installer\Waveify-Setup.exe 'build/Waveify-${{ steps.version.outputs.version }}-windows.exe'
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath 'build/Waveify-${{ steps.version.outputs.version }}-windows-portable.zip'
+
+      - name: Verify installed Windows application
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $setup = (Resolve-Path build/windows/installer/Waveify-Setup.exe).Path
+          $installPath = Join-Path $env:RUNNER_TEMP 'Waveify-installed'
+          $install = Start-Process $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$installPath" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Installer exited with $($install.ExitCode)" }
+          try {
+            ./tool/windows-smoke.ps1 -Executable (Join-Path $installPath 'waveify.exe') -OutputDirectory build/windows-smoke/installed
+          } finally {
+            $uninstall = Join-Path $installPath 'unins000.exe'
+            if (Test-Path $uninstall) {
+              Start-Process $uninstall -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait
+            }
           }
-          & $iscc windows\installer\waveify.iss
-          Copy-Item "build\windows\installer\Waveify-Setup.exe" "build\Waveify-${{ steps.version.outputs.version }}-windows.exe"
+
+      - name: Test real network streaming and synchronized lyrics
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path build/windows/x64/runner/Release/waveify.exe).Path
+          $report = Join-Path (Resolve-Path build/windows-smoke).Path 'network.json'
+          $process = Start-Process $exe -ArgumentList '--network-self-test', "--self-test-output=$report" -PassThru
+          if (-not $process.WaitForExit(120000)) { Stop-Process $process.Id -Force; throw 'Network playback check timed out' }
+          if ($process.ExitCode -ne 0) { throw "Network playback check failed: $(Get-Content $report -Raw)" }
+
+      - name: Download previous Windows installer for OTA compatibility check
+        if: matrix.target == 'windows' && inputs.ota_baseline_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: Waveify-windows
+          run-id: ${{ inputs.ota_baseline_run_id }}
+          github-token: ${{ github.token }}
+          path: build/ota-baseline
+
+      - name: Verify production updater preserves library and settings
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $baseline = Get-ChildItem build/ota-baseline -Filter '*.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($baseline) {
+            ./tool/windows-ota-smoke.ps1 -Installer 'build/Waveify-${{ steps.version.outputs.version }}-windows.exe' -BaselineInstaller $baseline.FullName
+          } else {
+            ./tool/windows-ota-smoke.ps1 -Installer 'build/Waveify-${{ steps.version.outputs.version }}-windows.exe'
+          }
+
+      - name: Generate trusted update manifest
+        if: matrix.target == 'windows'
+        shell: bash
+        run: |
+          python3 tool/generate_update_manifest.py \
+            --installer 'build/Waveify-${{ steps.version.outputs.version }}-windows.exe' \
+            --version '${{ steps.version.outputs.version }}' \
+            --repository '${{ github.repository }}' \
+            --notes 'Streaming online, testi sincronizzati e aggiornamenti in app.' > build/update.json
+
+      - name: Upload Windows diagnostics
+        if: always() && matrix.target == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Waveify-windows-diagnostics
+          path: |
+            build/windows-smoke/
+            build/windows/x64/CMakeFiles/CMakeConfigureLog.yaml
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Package Linux app
+        if: matrix.target == 'linux'
+        shell: bash
+        run: tar -C build/linux/x64/release -czf 'build/Waveify-${{ steps.version.outputs.version }}-linux.tar.gz' bundle
 
       - name: Package macOS app
         if: matrix.target == 'macos'
@@ -116,9 +236,10 @@ jobs:
         with:
           name: Waveify-${{ matrix.target }}
           path: |
+            build/update.json
             build/Waveify-${{ steps.version.outputs.version }}-${{ matrix.target }}.*
-            build/**/*.zip
-            build/**/*.exe
+            build/Waveify-${{ steps.version.outputs.version }}-${{ matrix.target }}*.zip
+            build/Waveify-${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz
           if-no-files-found: error
           retention-days: 30
 
@@ -126,7 +247,7 @@ jobs:
     name: Publish update feed and release
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
       - uses: actions/checkout@v4
 
@@ -169,17 +290,10 @@ jobs:
               print(path)
           PY
 
-      - name: Generate appcast.xml
-        env:
-          APP_NAME: Waveify
-          APP_VERSION: ${{ steps.version.outputs.version }}
-          APPCAST_URL: https://github.com/${{ github.repository }}/releases/latest/download/appcast.xml
-          WINDOWS_URL: https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/Waveify-${{ steps.version.outputs.version }}-windows.exe
-          MACOS_URL: https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/Waveify-${{ steps.version.outputs.version }}-macos.zip
-          WINDOWS_SIGNATURE: ${{ secrets.WINDOWS_DSA_SIGNATURE }}
-          MACOS_SIGNATURE: ${{ secrets.MACOS_ED_SIGNATURE }}
+      - name: Prepare Windows update manifest
+        shell: bash
         run: |
-          python3 tool/generate_appcast.py > appcast.xml
+          cp release-assets/Waveify-windows/update.json update.json
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
@@ -192,4 +306,4 @@ jobs:
           files: |
             release-assets/**/Waveify-*.exe
             release-assets/**/Waveify-*.zip
-            appcast.xml
+            update.json

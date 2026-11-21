@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/network/catalog_service.dart';
 import '../../../models/catalog.dart';
 import '../../../models/track.dart';
 import '../../../shared/widgets/common.dart';
@@ -13,7 +14,9 @@ import '../../player/player_controller.dart';
 
 /// The global search screen.
 class SearchPage extends ConsumerStatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({super.key, this.initialQuery = ''});
+
+  final String initialQuery;
 
   @override
   ConsumerState<SearchPage> createState() => _SearchPageState();
@@ -25,9 +28,35 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   Timer? _debounce;
   String _query = '';
   String _type = 'all';
+  CatalogSearchSource _source = CatalogSearchSource.online;
+  int _generation = 0;
   List<SearchItem> _results = const [];
   bool _loading = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _applyInitialQuery();
+  }
+
+  @override
+  void didUpdateWidget(SearchPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialQuery != oldWidget.initialQuery) _applyInitialQuery();
+  }
+
+  void _applyInitialQuery() {
+    final query = widget.initialQuery.trim();
+    if (query.isEmpty) return;
+    _debounce?.cancel();
+    _controller.text = query;
+    _source = CatalogSearchSource.online;
+    _type = 'track';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _controller.text == query) _search(query);
+    });
+  }
 
   @override
   void dispose() {
@@ -40,10 +69,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void _onChanged(String value) {
     _debounce?.cancel();
     if (value.trim().isEmpty) {
+      _generation++;
       setState(() {
         _query = '';
         _results = const [];
         _error = null;
+        _loading = false;
       });
       return;
     }
@@ -53,20 +84,24 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   Future<void> _search(String query) async {
+    final generation = ++_generation;
+    final source = _source, type = _type;
     setState(() {
       _loading = true;
       _error = null;
       _query = query;
     });
     try {
-      final results = await ref.read(catalogProvider).search(query, type: _type);
-      if (!mounted) return;
+      final results = await ref
+          .read(catalogProvider)
+          .search(query, type: type, source: source);
+      if (!mounted || generation != _generation) return;
       setState(() {
         _results = results;
         _loading = false;
       });
     } catch (err) {
-      if (!mounted) return;
+      if (!mounted || generation != _generation) return;
       setState(() {
         _error = '$err';
         _loading = false;
@@ -82,12 +117,23 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 2),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              t('common.sidebar.search'),
+              style: theme.textTheme.headlineMedium,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
           child: TextField(
             controller: _controller,
             focusNode: _focusNode,
             onChanged: _onChanged,
             onSubmitted: (value) {
+              _debounce?.cancel();
               if (value.trim().isNotEmpty) _search(value.trim());
             },
             textInputAction: TextInputAction.search,
@@ -107,28 +153,78 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ),
         ),
         Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final source in const [
+                    (CatalogSearchSource.online, 'Audius'),
+                    (CatalogSearchSource.youtube, 'YouTube'),
+                    (CatalogSearchSource.library, 'search.library'),
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        selectedColor: theme.colorScheme.primary,
+                        checkmarkColor: theme.colorScheme.onPrimary,
+                        labelStyle: theme.textTheme.labelLarge?.copyWith(
+                          color: _source == source.$1
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurface,
+                        ),
+                        label: Text(
+                          source.$1 == CatalogSearchSource.library
+                              ? t(source.$2)
+                              : source.$2,
+                        ),
+                        selected: _source == source.$1,
+                        onSelected: (_) {
+                          setState(() => _source = source.$1);
+                          if (_query.isNotEmpty) _search(_query);
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              for (final entry in const [
-                ('all', 'search.all'),
-                ('track', 'search.songs'),
-                ('artist', 'search.artists'),
-                ('album', 'search.albums'),
-                ('playlist', 'search.playlists'),
-              ])
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(t(entry.$2)),
-                    selected: _type == entry.$1,
-                    onSelected: (_) {
-                      setState(() => _type = entry.$1);
-                      if (_query.isNotEmpty) _search(_query);
-                    },
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final entry in const [
+                  ('all', 'search.all'),
+                  ('track', 'search.songs'),
+                  ('artist', 'search.artists'),
+                  ('album', 'search.albums'),
+                  ('playlist', 'search.playlists'),
+                ])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      selectedColor: theme.colorScheme.primary,
+                      checkmarkColor: theme.colorScheme.onPrimary,
+                      labelStyle: theme.textTheme.labelLarge?.copyWith(
+                        color: _type == entry.$1
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onSurface,
+                      ),
+                      label: Text(t(entry.$2)),
+                      selected: _type == entry.$1,
+                      onSelected: (_) {
+                        setState(() => _type = entry.$1);
+                        if (_query.isNotEmpty) _search(_query);
+                      },
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -141,7 +237,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     if (_query.isEmpty) {
       return EmptyState(
         icon: Icons.search_rounded,
-        title: t('search.type_to_search'),
+        title: t(
+          _source == CatalogSearchSource.online
+              ? 'search.online_prompt'
+              : 'search.type_to_search',
+        ),
       );
     }
     if (_loading) return const LoadingState();
@@ -182,10 +282,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               runSpacing: 8,
               children: [
                 for (final item in others)
-                  _SearchResultChip(
-                    item: item,
-                    onTap: () => _openResult(item),
-                  ),
+                  _SearchResultChip(item: item, onTap: () => _openResult(item)),
               ],
             ),
           ),

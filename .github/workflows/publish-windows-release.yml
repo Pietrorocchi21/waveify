@@ -1,0 +1,89 @@
+name: Publish verified Windows release
+on:
+  push:
+    branches: ['feat/windows/functional-release']
+    paths: ['.github/workflows/publish-windows-release.yml']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag matching the verified build
+        required: true
+        type: string
+      build_run_id:
+        description: Successful desktop build run containing Waveify-windows
+        required: true
+        type: string
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: publish-windows-${{ inputs.tag || github.ref }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate successful build provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+\+[0-9]+$ ]]
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]]
+          git fetch --depth 1 origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          export EXPECTED_COMMIT="$(git rev-parse "$RELEASE_TAG^{commit}")"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" > /tmp/build-run.json
+          python3 - <<'PY'
+          import json,os
+          run=json.load(open('/tmp/build-run.json'))
+          assert run['status']=='completed' and run['conclusion']=='success', 'Build did not pass'
+          assert run['head_sha']==os.environ['EXPECTED_COMMIT'], 'Build commit does not match release tag'
+          assert run['path']=='.github/workflows/flutter-desktop.yml', 'Unexpected build workflow'
+          print('Verified successful build and tag commit')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: Waveify-windows
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ github.token }}
+          path: release
+      - name: Validate exact installer and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          from tool.generate_update_manifest import manifest
+          p=pathlib.Path('release')
+          version=os.environ['RELEASE_TAG'][1:]
+          metadata=json.loads((p/'update.json').read_text())
+          installer=p/f'Waveify-{version}-windows.exe'
+          expected=manifest(installer,version,os.environ['GITHUB_REPOSITORY'],metadata['notes'])
+          assert metadata==expected, 'Manifest does not describe the verified installer'
+          assert (p/f'Waveify-{version}-windows-portable.zip').is_file(), 'Portable bundle missing'
+          print('Installer hash, length, version and URL verified')
+          PY
+      - name: Publish complete release
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${RELEASE_TAG#v}"
+          NOTES="docs/releases/${VERSION%%+*}.md"
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft > /tmp/existing-release.json 2>/dev/null; then
+            python3 - <<'PY'
+          import json
+          assert json.load(open('/tmp/existing-release.json'))['isDraft'], 'Published releases are immutable; choose a new version'
+          PY
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --draft \
+              --title "WAVEIFY ${VERSION%%+*}" --notes-file "$NOTES"
+          fi
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            "release/Waveify-$VERSION-windows.exe" "release/Waveify-$VERSION-windows-portable.zip" release/update.json
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest
