@@ -95,7 +95,13 @@ class SpatialAlbumPage extends ConsumerWidget {
                 children: [
                   Hero(
                     tag: heroTag,
-                    child: GalleryArt(album: album, size: size),
+                    child: GalleryArt(
+                      album: album,
+                      size: size,
+                      coverOverride: detail?.coverUrl.isNotEmpty == true
+                          ? detail!.coverUrl
+                          : null,
+                    ),
                   ),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 470),

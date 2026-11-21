@@ -10,16 +10,22 @@ Color galleryDemoTint(int? index) => switch (index) {
 };
 
 class GalleryArt extends StatelessWidget {
-  const GalleryArt({super.key, required this.album, required this.size});
+  const GalleryArt({
+    super.key,
+    required this.album,
+    required this.size,
+    this.coverOverride,
+  });
 
   final GalleryAlbum album;
   final double size;
+  final String? coverOverride;
 
   @override
   Widget build(BuildContext context) {
     if (!album.isDemo) {
       return CoverImage(
-        url: album.cover,
+        url: coverOverride ?? album.cover,
         size: size,
         borderRadius: 12,
         decodeWidth: (size * MediaQuery.devicePixelRatioOf(context))

@@ -283,6 +283,7 @@ class _SpatialRoomState extends ConsumerState<_SpatialRoom>
                       );
                     },
                     child: GestureDetector(
+                      key: const ValueKey('spatial-gallery-stage'),
                       behavior: HitTestBehavior.opaque,
                       onHorizontalDragStart: (_) {
                         _request++;

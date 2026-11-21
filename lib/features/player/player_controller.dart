@@ -865,6 +865,7 @@ class PlayerController extends Notifier<PlayerState> {
     int session,
     String seedTrackId,
   ) async {
+    if (seedTrackId.startsWith('gallery-demo:')) return;
     final radio = state.isRadioContext;
     if (!radio && !state.autoplaySimilar) return;
     final startContext = state.playbackContext;

@@ -305,6 +305,15 @@ void main() {
             .nextPageTooltip,
       );
       await tester.tap(nextAlbum);
+      await tester.tap(nextAlbum);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('3 / 3'), findsOneWidget);
+      final cover = find.byKey(const ValueKey('spatial-gallery-stage'));
+      await tester.timedDrag(
+        cover,
+        Offset(desktopRoom ? 250 : 130, 0),
+        const Duration(seconds: 1),
+      );
       await tester.pumpAndSettle();
       expect(find.textContaining('2 / 3'), findsOneWidget);
       await tester.tap(find.text('Open album'));
