@@ -1,4 +1,9 @@
 {
+  "gallery": {
+    "title": "Spatial gallery",
+    "demo": "Demo collection",
+    "standard": "Standard view"
+  },
   "artist": {
     "open_album": "Open album",
     "no_biography": "No biography",

@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../models/catalog.dart';
 import '../../../shared/widgets/common.dart';
-import '../../../shared/widgets/artwork_stage.dart';
 import '../../../shared/widgets/track_widgets.dart';
 import '../../player/player_controller.dart';
 
@@ -150,27 +149,23 @@ class ArtistPage extends ConsumerWidget {
             ],
             if (data.albums.isNotEmpty) ...[
               SectionHeader(title: t('artist.albums')),
-              ArtworkStage(
-                key: ValueKey(data.id),
-                captionOnArtwork: true,
-                actionLabel: t('artist.open_album'),
-                actionIcon: Icons.album_outlined,
-                items: [
-                  for (final release in data.albums)
-                    StageArtwork(
-                      id: release.id,
-                      title: release.title,
-                      subtitle: release.year?.toString() ?? '',
-                      coverUrl: release.cover?.url ?? '',
-                      onActivate: () => context.push(
-                        Uri(
-                          path: '/collection',
-                          queryParameters: {'type': 'album', 'id': release.id},
-                        ).toString(),
-                      ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push(
+                      Uri(
+                        path: '/gallery',
+                        queryParameters: {'artist': data.id},
+                      ).toString(),
                     ),
-                ],
+                    icon: const Icon(Icons.view_in_ar_outlined),
+                    label: Text(t('gallery.title')),
+                  ),
+                ),
               ),
+              _ReleaseRow(releases: data.albums, artistId: data.id),
             ],
             if (data.singles.isNotEmpty) ...[
               SectionHeader(title: t('artist.singles')),

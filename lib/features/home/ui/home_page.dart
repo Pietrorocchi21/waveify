@@ -165,6 +165,19 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ),
         SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: inset),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.view_in_ar_outlined),
+                label: Text(t('gallery.title')),
+                onPressed: () => context.push('/gallery'),
+              ),
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: RadialGradient(

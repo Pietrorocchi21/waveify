@@ -54,6 +54,12 @@ const List<AppDestination> appDestinations = [
     'common.sidebar.library',
   ),
   AppDestination(
+    '/gallery',
+    Icons.view_in_ar_outlined,
+    Icons.view_in_ar_rounded,
+    'gallery.title',
+  ),
+  AppDestination(
     '/downloads',
     Icons.download_for_offline_outlined,
     Icons.download_for_offline_rounded,

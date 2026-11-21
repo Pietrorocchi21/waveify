@@ -1,3 +1,5 @@
+import '../../features/gallery/gallery_catalog.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -136,6 +138,18 @@ Future<bool> runNativeSelfTest(String output, {String? videoPath}) async {
         await video.dispose().timeout(const Duration(seconds: 5));
       }
     }
+    final demo = await loadDemoAlbum(demoAlbums.first);
+    final demoDuration = await player
+        .setAudioSource(
+          AudioSource.uri(Uri.parse(demo.tracks.single.sourceUrl)),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (demoDuration == null || demoDuration.inMilliseconds < 5900) {
+      throw StateError(
+        'Native player could not decode the bundled gallery sample.',
+      );
+    }
+    checks['gallery_demo_decode'] = 'passed';
     report['status'] = 'passed';
   } catch (error, stack) {
     report['error'] = '$error';

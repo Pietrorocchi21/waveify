@@ -1,5 +1,7 @@
 import 'package:waveify/core/local/local_library_store.dart';
 import 'package:waveify/core/theme/artwork_palette.dart';
+import 'package:waveify/features/collection/ui/collection_page.dart';
+import 'package:waveify/features/gallery/spatial_album_page.dart';
 import 'package:waveify/features/lyrics/lyrics_controller.dart';
 
 import 'dart:io';
@@ -174,6 +176,20 @@ void main() {
           downloadsStoreProvider.overrideWithValue(FixtureDownloadsStore()),
           sessionProvider.overrideWithValue(FixtureSessionStore()),
           innertubeCatalogProvider.overrideWithValue(FixtureCatalog()),
+          demoAlbumProvider.overrideWith(
+            (ref, album) async => CatalogCollection(
+              type: 'demo',
+              id: album.id,
+              title: album.title,
+              tracks: [
+                Track(
+                  id: 'gallery-demo:${album.id}',
+                  title: album.title,
+                  durationMs: 6000,
+                ),
+              ],
+            ),
+          ),
           playerControllerProvider.overrideWith(PreviewPlayer.new),
         ],
       );
@@ -281,6 +297,52 @@ void main() {
         );
         await capture(tester, '${path.substring(1)}-${size.width.toInt()}');
       }
+      router.go('/gallery');
+      await tester.pumpAndSettle();
+      expect(find.text('Demo collection'), findsOneWidget);
+      final nextAlbum = find.byTooltip(
+        MaterialLocalizations.of(tester.element(find.text('Demo collection')))
+            .nextPageTooltip,
+      );
+      await tester.tap(nextAlbum);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('2 / 3'), findsOneWidget);
+      await tester.tap(find.text('Open album'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SpatialAlbumPage), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(SpatialAlbumPage),
+          matching: find.text('0:06'),
+        ),
+        findsWidgets,
+      );
+      await capture(tester, 'spatial-album-${size.width.toInt()}');
+      final detail = find.byType(SpatialAlbumPage);
+      await tester.tap(
+        find.descendant(
+          of: detail,
+          matching: find.widgetWithText(FilledButton, 'Play'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        container.read(playerControllerProvider).currentTrack?.id,
+        'gallery-demo:demo-tides',
+      );
+
+      final albumContext = tester.element(find.byType(SpatialAlbumPage));
+      Navigator.of(albumContext).pop();
+      await tester.pumpAndSettle();
+      expect(find.textContaining('2 / 3'), findsOneWidget);
+      expect(
+        container.read(playerControllerProvider).currentTrack?.id,
+        'gallery-demo:demo-tides',
+      );
+      await container.read(playerControllerProvider.notifier).skipNext();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await capture(tester, 'spatial-gallery-${size.width.toInt()}');
       router.go('/');
       await tester.pumpAndSettle();
       // Existing full-player flow is reachable from track metadata.

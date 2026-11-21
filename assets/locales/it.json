@@ -1,4 +1,9 @@
 {
+  "gallery": {
+    "title": "Galleria spaziale",
+    "demo": "Collezione demo",
+    "standard": "Vista standard"
+  },
   "artist": {
     "open_album": "Apri album",
     "no_biography": "Nessuna biografia",

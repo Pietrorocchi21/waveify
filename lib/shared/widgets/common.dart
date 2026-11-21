@@ -15,6 +15,7 @@ class CoverImage extends StatefulWidget {
     this.width,
     this.height,
     this.borderRadius = 8,
+    this.decodeWidth,
     this.fit = BoxFit.cover,
   });
 
@@ -23,6 +24,7 @@ class CoverImage extends StatefulWidget {
   final double? width;
   final double? height;
   final double borderRadius;
+  final int? decodeWidth;
   final BoxFit fit;
 
   @override
@@ -90,6 +92,7 @@ class _CoverImageState extends State<CoverImage> {
           width: widget.width ?? widget.size,
           height: widget.height ?? widget.size,
           fit: widget.fit,
+          cacheWidth: widget.decodeWidth,
           errorBuilder: (context, error, stack) => placeholder,
         ),
       );
@@ -98,6 +101,7 @@ class _CoverImageState extends State<CoverImage> {
       borderRadius: BorderRadius.circular(widget.borderRadius),
       child: CachedNetworkImage(
         imageUrl: widget.url,
+        memCacheWidth: widget.decodeWidth,
         width: widget.width ?? widget.size,
         height: widget.height ?? widget.size,
         fit: widget.fit,

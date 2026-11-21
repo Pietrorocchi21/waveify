@@ -271,7 +271,11 @@ class PlayerController extends Notifier<PlayerState> {
     Duration? initialPosition,
     bool skipOnError = false,
   }) async {
-    _telemetry.startTrack(track, state.playbackContext);
+    if (track.id.startsWith('gallery-demo:')) {
+      _telemetry.flush();
+    } else {
+      _telemetry.startTrack(track, state.playbackContext);
+    }
     final session = _sessionId;
     bool isCurrent() =>
         session == _sessionId && state.currentTrack?.id == track.id;

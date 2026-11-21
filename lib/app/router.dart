@@ -1,3 +1,5 @@
+import '../features/gallery/spatial_gallery_page.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +27,7 @@ class AppRoutes {
 
   static const home = '/';
   static const search = '/search';
+  static const gallery = '/gallery';
   static const library = '/library';
   static const playlist = '/library/playlist';
   static const artist = '/artist';
@@ -77,6 +80,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.search,
             builder: (context, state) =>
                 SearchPage(initialQuery: state.uri.queryParameters['q'] ?? ''),
+          ),
+          GoRoute(
+            path: AppRoutes.gallery,
+            builder: (context, state) => SpatialGalleryPage(
+              artistId: state.uri.queryParameters['artist'],
+            ),
           ),
           GoRoute(
             path: AppRoutes.library,

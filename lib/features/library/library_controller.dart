@@ -207,6 +207,7 @@ class LibraryController extends Notifier<LibraryState> {
 
   /// Toggles the like state of a track.
   Future<void> toggleLike(Track track) async {
+    if (track.id.startsWith('gallery-demo:')) return;
     if (state.likedTracks.any((t) => t.id == track.id)) {
       await unlikeTrack(track.id);
     } else {

@@ -18,6 +18,7 @@ class CatalogCollection {
     this.coverUrl = '',
     this.tracks = const [],
     this.durationMs = 0,
+    this.year,
   });
 
   final String type;
@@ -28,6 +29,7 @@ class CatalogCollection {
   final String coverUrl;
   final List<Track> tracks;
   final int durationMs;
+  final int? year;
 }
 
 /// Loads a catalog album or playlist.
@@ -47,6 +49,7 @@ final catalogCollectionProvider =
           coverUrl: album.cover?.url ?? '',
           tracks: album.tracks,
           durationMs: album.durationMs,
+          year: album.year,
         );
       } catch (_) {
         final playlist = await catalog.getPlaylist(id);
